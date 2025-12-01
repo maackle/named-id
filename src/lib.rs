@@ -67,7 +67,7 @@ pub trait AliasedId: ShortId + Debug {
     const SHOW_SHORT_ID: bool = true;
     const BRACKETS: (&'static str, &'static str) = ("⟪", "⟫");
 
-    fn aliased(self, alias: &str) -> Self
+    fn aliased(self, alias: &str) -> Alias<Self>
     where
         Self: Sized,
     {
@@ -88,20 +88,65 @@ pub trait AliasedId: ShortId + Debug {
                 tracing::warn!(?old, new = ?alias, "alias already exists, replacing");
             }
         }
-        self
+        Alias { data: self }
     }
 
-    fn alias(&self) -> String {
-        ALIASES
-            .lock()
-            .unwrap()
-            .get(&format!("{self:?}"))
-            .cloned()
-            .unwrap_or_else(|| self.default_alias())
+    fn alias(self) -> Alias<Self>
+    where
+        Self: Sized,
+    {
+        Alias { data: self }
     }
 
     fn default_alias(&self) -> String {
         bracketed(&self.short(), Self::BRACKETS)
+    }
+}
+
+fn get_alias<T>(id: &T) -> String
+where
+    T: AliasedId,
+{
+    ALIASES
+        .lock()
+        .unwrap()
+        .get(&format!("{id:?}"))
+        .cloned()
+        .unwrap_or_else(|| id.default_alias())
+}
+
+pub struct Alias<T>
+where
+    T: AliasedId,
+{
+    data: T,
+}
+
+impl<T> std::fmt::Display for Alias<T>
+where
+    T: AliasedId,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", get_alias(&self.data))
+    }
+}
+
+impl<T> std::fmt::Debug for Alias<T>
+where
+    T: AliasedId,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", get_alias(&self.data))
+    }
+}
+
+impl<T> std::ops::Deref for Alias<T>
+where
+    T: AliasedId,
+{
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.data
     }
 }
 
@@ -174,11 +219,11 @@ mod tests {
         let idx = TestId(12349876).aliased("qux");
         let idz = TestId(987654321);
 
-        assert_eq!(id1.alias(), "⟪ID|1234|foo⟫");
-        assert_eq!(id2.alias(), "⟪ID|2345|bar⟫");
-        assert_eq!(id3.alias(), "⟪ID|3456|baz⟫");
+        assert_eq!(id1.to_string(), "⟪ID|1234|foo⟫");
+        assert_eq!(id2.to_string(), "⟪ID|2345|bar⟫");
+        assert_eq!(id3.to_string(), "⟪ID|3456|baz⟫");
 
-        assert_eq!(idx.alias(), "⟪ID|1234|qux⟫");
-        assert_eq!(idz.alias(), "⟪ID|9876⟫");
+        assert_eq!(idx.to_string(), "⟪ID|1234|qux⟫");
+        assert_eq!(idz.alias().to_string(), "⟪ID|9876⟫");
     }
 }
