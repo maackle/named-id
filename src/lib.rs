@@ -1,23 +1,42 @@
 //! A utility for making logs more readable by shortening and aliasing long IDs.
 
-use std::{borrow::Cow, collections::HashMap, fmt::Display, sync::LazyLock, sync::Mutex};
+use std::{
+    any::TypeId,
+    collections::HashMap,
+    fmt::Debug,
+    sync::{LazyLock, Mutex},
+};
+
+static PREFIX_CACHE: LazyLock<Mutex<HashMap<String, TypeId>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 static SHORT_ID_CACHE: LazyLock<Mutex<HashMap<String, String>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-static ALIASES: LazyLock<Mutex<HashMap<Vec<u8>, String>>> =
+static ALIASES: LazyLock<Mutex<HashMap<String, String>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-pub trait ShortId: Display {
+pub trait ShortId: 'static {
     const PREFIX: &'static str;
     const LENGTH: usize = 4;
 
-    fn to_short_string(&self) -> String {
-        format!("{self}")
-    }
+    fn to_short_string(&self) -> String;
 
     fn prefix() -> String {
-        Self::PREFIX.to_string()
+        let prefix = Self::PREFIX.to_string();
+        debug_assert!(
+            {
+                let tid = TypeId::of::<Self>();
+                let r = PREFIX_CACHE.lock().unwrap().insert(prefix.clone(), tid);
+                if let Some(existing) = r {
+                    existing == tid
+                } else {
+                    true
+                }
+            },
+            "\"{prefix}\" has already been registered as a ShortId::PREFIX"
+        );
+        prefix
     }
 
     fn short(&self) -> String {
@@ -44,11 +63,9 @@ pub trait ShortId: Display {
     }
 }
 
-pub trait AliasedId: ShortId {
+pub trait AliasedId: ShortId + Debug {
     const SHOW_SHORT_ID: bool = true;
     const BRACKETS: (&'static str, &'static str) = ("⟪", "⟫");
-
-    fn as_bytes(&self) -> Cow<'_, [u8]>;
 
     fn aliased(self, alias: &str) -> Self
     where
@@ -65,7 +82,7 @@ pub trait AliasedId: ShortId {
         let existing = ALIASES
             .lock()
             .unwrap()
-            .insert(self.as_bytes().to_vec(), alias.clone());
+            .insert(format!("{self:?}"), alias.clone());
         if let Some(old) = existing {
             if old != alias {
                 tracing::warn!(?old, new = ?alias, "alias already exists, replacing");
@@ -78,7 +95,7 @@ pub trait AliasedId: ShortId {
         ALIASES
             .lock()
             .unwrap()
-            .get(&*self.as_bytes())
+            .get(&format!("{self:?}"))
             .cloned()
             .unwrap_or_else(|| self.default_alias())
     }
@@ -100,21 +117,15 @@ mod tests {
     #[derive(Debug, PartialEq, Eq)]
     struct TestId(u64);
 
-    impl Display for TestId {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "{}", self.0)
-        }
-    }
-
     impl ShortId for TestId {
         const PREFIX: &'static str = "ID";
-    }
 
-    impl AliasedId for TestId {
-        fn as_bytes(&self) -> Cow<'_, [u8]> {
-            Cow::Owned(self.0.to_le_bytes().to_vec())
+        fn to_short_string(&self) -> String {
+            format!("{}", self.0)
         }
     }
+
+    impl AliasedId for TestId {}
 
     #[test]
     fn test_short_id() {
@@ -124,26 +135,50 @@ mod tests {
         let id2 = TestId(2345678901);
         let id3 = TestId(3456789012);
         let idx = TestId(12349876);
+        dbg!();
         assert_eq!(id1.short(), "ID|1234");
+        dbg!();
         assert_eq!(id2.short(), "ID|2345");
+        dbg!();
         assert_eq!(id3.short(), "ID|3456");
 
         assert_eq!(idx.short(), "ID|1234");
     }
 
     #[test]
-    fn test_aliased_id() {
-        tracing_subscriber::fmt::init();
+    fn test_prefix_collision() {
+        struct TestId2(u64);
+        impl ShortId for TestId2 {
+            const PREFIX: &'static str = "ID";
+            fn to_short_string(&self) -> String {
+                format!("{}", self.0)
+            }
+        }
 
+        std::panic::catch_unwind(|| {
+            TestId2(1234567890).short();
+        })
+        .unwrap();
+
+        std::panic::catch_unwind(|| {
+            TestId(1234567890).short();
+        })
+        .unwrap_err();
+    }
+
+    #[test]
+    fn test_aliased_id() {
         let id1 = TestId(1234567890).aliased("foo");
         let id2 = TestId(2345678901).aliased("bar");
         let id3 = TestId(3456789012).aliased("baz");
         let idx = TestId(12349876).aliased("qux");
+        let idz = TestId(987654321);
 
         assert_eq!(id1.alias(), "⟪ID|1234|foo⟫");
         assert_eq!(id2.alias(), "⟪ID|2345|bar⟫");
         assert_eq!(id3.alias(), "⟪ID|3456|baz⟫");
 
         assert_eq!(idx.alias(), "⟪ID|1234|qux⟫");
+        assert_eq!(idz.alias(), "⟪ID|9876⟫");
     }
 }
