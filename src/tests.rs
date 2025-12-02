@@ -75,7 +75,7 @@ fn test_aliased_id() {
     assert_eq!(id3.aliased().to_string(), "⟪ID|3456|baz⟫");
 
     assert_eq!(idx.aliased().to_string(), "⟪ID|1234|qux⟫");
-    assert_eq!(idz.aliased().to_string(), "TestId(987654321)");
+    assert_eq!(idz.aliased().to_string(), "Num(987654321)");
 }
 
 #[test]
@@ -166,7 +166,9 @@ fn test_aliased_id_maps() {
 
 #[test]
 fn test_deep_nesting() {
-    #[derive(Debug, Clone)]
+    use aliased_id_derive::ContainsAliases;
+
+    #[derive(Debug, Clone, ContainsAliases)]
     enum A {
         Nums(Vec<Num>),
         Hex(Hex),
@@ -178,19 +180,10 @@ fn test_deep_nesting() {
         x: u32,
     }
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, ContainsAliases)]
     struct C {
         aa: Vec<A>,
         bb: Vec<B>,
-    }
-
-    impl ContainsAliases for A {
-        fn aliased_ids(&self) -> Vec<AnyAlias> {
-            match self {
-                A::Nums(nums) => nums.aliased_ids(),
-                A::Hex(hex) => hex.aliased_ids(),
-            }
-        }
     }
 
     impl ContainsAliases for B {
@@ -199,16 +192,6 @@ fn test_deep_nesting() {
                 .aliased_ids()
                 .into_iter()
                 .chain(vec![AnyAlias(Box::new(self.x))])
-                .collect()
-        }
-    }
-
-    impl ContainsAliases for C {
-        fn aliased_ids(&self) -> Vec<AnyAlias> {
-            self.aa
-                .aliased_ids()
-                .into_iter()
-                .chain(self.bb.aliased_ids())
                 .collect()
         }
     }

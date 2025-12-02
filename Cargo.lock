@@ -15,6 +15,7 @@ dependencies = [
 name = "aliased-id"
 version = "0.1.0"
 dependencies = [
+ "aliased-id-derive",
  "derive_more",
  "hex",
  "pretty_assertions",
@@ -22,6 +23,15 @@ dependencies = [
  "serde",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "aliased-id-derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
