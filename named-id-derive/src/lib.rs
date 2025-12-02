@@ -3,8 +3,8 @@ use proc_macro2::Span;
 use quote::quote;
 use syn::{Data, DeriveInput, Fields, Index, parse_macro_input};
 
-#[proc_macro_derive(ContainsAliases)]
-pub fn derive_contains_aliases(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(Nameables)]
+pub fn derive_nameables(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
 
@@ -12,14 +12,14 @@ pub fn derive_contains_aliases(input: TokenStream) -> TokenStream {
         Data::Struct(data_struct) => {
             match &data_struct.fields {
                 Fields::Named(fields) => {
-                    // For named fields, collect all field.aliased_ids() and chain them
+                    // For named fields, collect all field.nameables() and chain them
                     let field_calls: Vec<_> = fields
                         .named
                         .iter()
                         .map(|field| {
                             let field_name = &field.ident;
                             quote! {
-                                self.#field_name.aliased_ids()
+                                self.#field_name.nameables()
                             }
                         })
                         .collect();
@@ -41,7 +41,7 @@ pub fn derive_contains_aliases(input: TokenStream) -> TokenStream {
                     }
                 }
                 Fields::Unnamed(fields) => {
-                    // For tuple structs, collect all field.aliased_ids() and chain them
+                    // For tuple structs, collect all field.nameables() and chain them
                     let field_calls: Vec<_> = fields
                         .unnamed
                         .iter()
@@ -49,7 +49,7 @@ pub fn derive_contains_aliases(input: TokenStream) -> TokenStream {
                         .map(|(idx, _field)| {
                             let index = Index::from(idx);
                             quote! {
-                                self.#index.aliased_ids()
+                                self.#index.nameables()
                             }
                         })
                         .collect();
@@ -79,7 +79,7 @@ pub fn derive_contains_aliases(input: TokenStream) -> TokenStream {
             }
         }
         Data::Enum(data_enum) => {
-            // For enums, match on each variant and call aliased_ids() on the inner values
+            // For enums, match on each variant and call nameables() on the inner values
             let match_arms: Vec<_> = data_enum
                 .variants
                 .iter()
@@ -93,7 +93,7 @@ pub fn derive_contains_aliases(input: TokenStream) -> TokenStream {
                                 .iter()
                                 .map(|field_name| {
                                     quote! {
-                                        #field_name.aliased_ids()
+                                        #field_name.nameables()
                                     }
                                 })
                                 .collect();
@@ -129,7 +129,7 @@ pub fn derive_contains_aliases(input: TokenStream) -> TokenStream {
                                     .iter()
                                     .map(|ident| {
                                         quote! {
-                                            #ident.aliased_ids()
+                                            #ident.nameables()
                                         }
                                     })
                                     .collect();
@@ -160,15 +160,15 @@ pub fn derive_contains_aliases(input: TokenStream) -> TokenStream {
             }
         }
         Data::Union(_) => {
-            return syn::Error::new_spanned(name, "ContainsAliases cannot be derived for unions")
+            return syn::Error::new_spanned(name, "Nameables cannot be derived for unions")
                 .to_compile_error()
                 .into();
         }
     };
 
     let expanded = quote! {
-        impl crate::ContainsAliases for #name {
-            fn aliased_ids(&self) -> ::std::vec::Vec<crate::AnyAlias> {
+        impl crate::Nameables for #name {
+            fn nameables(&self) -> ::std::vec::Vec<crate::AnyNameable> {
                 #impl_block
             }
         }

@@ -1,13 +1,16 @@
 [package]
-name = "aliased-id"
+name = "named-id"
 version = "0.1.0"
 edition = "2024"
+
+[workspace]
+members = ["named-id-derive"]
 
 [dependencies]
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 tracing = "0.1"
-aliased-id-derive = { path = "aliased-id-derive", version = "0.1.0" }
+named-id-derive = { path = "named-id-derive", version = "0.1.0" }
 
 [dev-dependencies]
 derive_more = { version = "1.0", features = ["full"] }

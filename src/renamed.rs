@@ -3,29 +3,29 @@ use serde::{Deserialize, Serialize};
 use super::*;
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct Aliased<T>(T);
+pub struct Renamed<T>(T);
 
-impl<T> From<T> for Aliased<T>
+impl<T> From<T> for Renamed<T>
 where
-    T: ContainsAliases,
+    T: Nameables,
 {
     fn from(value: T) -> Self {
-        Aliased(value)
+        Renamed(value)
     }
 }
 
-impl<T> ContainsAliases for Aliased<T>
+impl<T> Nameables for Renamed<T>
 where
-    T: ContainsAliases,
+    T: Nameables,
 {
-    fn aliased_ids(&self) -> Vec<AnyAlias> {
-        self.0.aliased_ids()
+    fn nameables(&self) -> Vec<AnyNameable> {
+        self.0.nameables()
     }
 }
 
-impl<T> std::ops::Deref for Aliased<T>
+impl<T> std::ops::Deref for Renamed<T>
 where
-    T: ContainsAliases,
+    T: Nameables,
 {
     type Target = T;
     fn deref(&self) -> &Self::Target {
@@ -33,18 +33,18 @@ where
     }
 }
 
-impl<T> std::fmt::Display for Aliased<T>
+impl<T> std::fmt::Display for Renamed<T>
 where
-    T: ContainsAliases,
+    T: Nameables,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
-impl<T> std::fmt::Debug for Aliased<T>
+impl<T> std::fmt::Debug for Renamed<T>
 where
-    T: ContainsAliases,
+    T: Nameables,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let pretty = f.alternate();
@@ -55,7 +55,7 @@ where
         };
         let patterns = self
             .0
-            .aliased_ids()
+            .nameables()
             .into_iter()
             .map(|id| {
                 let pat = if pretty {
@@ -63,7 +63,7 @@ where
                 } else {
                     format!("{:?}", id)
                 };
-                (pat, get_alias_string(&id))
+                (pat, get_name_string(&id))
             })
             .collect::<Vec<_>>();
 

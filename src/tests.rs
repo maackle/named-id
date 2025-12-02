@@ -14,7 +14,7 @@ impl Num {
     }
 }
 
-impl AliasedId for Num {
+impl Nameable for Num {
     fn shortener(&self) -> Option<Shortener> {
         Some(Shortener {
             length: 4,
@@ -32,7 +32,7 @@ impl Hex {
     }
 }
 
-impl AliasedId for Hex {
+impl Nameable for Hex {
     fn shortener(&self) -> Option<Shortener> {
         Some(Shortener {
             length: 4,
@@ -63,29 +63,29 @@ fn test_short_id() {
 }
 
 #[test]
-fn test_aliased_id() {
-    let id1 = Num(1234567890).with_alias("foo");
-    let id2 = Num(2345678901).with_alias("bar");
-    let id3 = Num(3456789012).with_alias("baz");
-    let idx = Num(12349876).with_alias("qux");
+fn test_named_id() {
+    let id1 = Num(1234567890).with_name("foo");
+    let id2 = Num(2345678901).with_name("bar");
+    let id3 = Num(3456789012).with_name("baz");
+    let idx = Num(12349876).with_name("qux");
     let idz = Num(987654321);
 
-    assert_eq!(id1.aliased().to_string(), "⟪ID|1234|foo⟫");
-    assert_eq!(id2.aliased().to_string(), "⟪ID|2345|bar⟫");
-    assert_eq!(id3.aliased().to_string(), "⟪ID|3456|baz⟫");
+    assert_eq!(id1.renamed().to_string(), "⟪ID|1234|foo⟫");
+    assert_eq!(id2.renamed().to_string(), "⟪ID|2345|bar⟫");
+    assert_eq!(id3.renamed().to_string(), "⟪ID|3456|baz⟫");
 
-    assert_eq!(idx.aliased().to_string(), "⟪ID|1234|qux⟫");
-    assert_eq!(idz.aliased().to_string(), "Num(987654321)");
+    assert_eq!(idx.renamed().to_string(), "⟪ID|1234|qux⟫");
+    assert_eq!(idz.renamed().to_string(), "Num(987654321)");
 }
 
 #[test]
-fn test_aliased_id_vec() {
+fn test_named_id_vec() {
     let v = vec![
         Num(11111111).with_short(),
         Num(22222222).with_short(),
         Num(33333333).with_short(),
     ];
-    let a = v.aliased();
+    let a = v.renamed();
     assert_eq!(format!("{a}"), "[⟪ID|1111⟫, ⟪ID|2222⟫, ⟪ID|3333⟫]");
     assert_eq!(format!("{a:?}"), "[⟪ID|1111⟫, ⟪ID|2222⟫, ⟪ID|3333⟫]");
     assert_eq!(
@@ -101,7 +101,7 @@ fn test_aliased_id_vec() {
     );
 
     let s = std::collections::BTreeSet::from([Num(11111111), Num(22222222), Num(33333333)]);
-    let a = s.aliased();
+    let a = s.renamed();
     assert_eq!(format!("{a}"), "{⟪ID|1111⟫, ⟪ID|2222⟫, ⟪ID|3333⟫}");
     assert_eq!(format!("{a:?}"), "{⟪ID|1111⟫, ⟪ID|2222⟫, ⟪ID|3333⟫}");
     assert_eq!(
@@ -118,7 +118,7 @@ fn test_aliased_id_vec() {
 }
 
 #[test]
-fn test_aliased_id_maps() {
+fn test_named_id_maps() {
     let s = std::collections::BTreeMap::from([
         (
             Num(11111111).with_short(),
@@ -133,7 +133,7 @@ fn test_aliased_id_maps() {
             vec![Num(44444444).with_short(), Num(77777777).with_short()],
         ),
     ]);
-    let a = s.aliased();
+    let a = s.renamed();
     assert_eq!(
         format!("{a}"),
         "{⟪ID|1111⟫: [⟪ID|2222⟫, ⟪ID|5555⟫], ⟪ID|2222⟫: [⟪ID|3333⟫, ⟪ID|6666⟫], ⟪ID|3333⟫: [⟪ID|4444⟫, ⟪ID|7777⟫]}"
@@ -166,9 +166,9 @@ fn test_aliased_id_maps() {
 
 #[test]
 fn test_deep_nesting() {
-    use aliased_id_derive::ContainsAliases;
+    use named_id_derive::Nameables;
 
-    #[derive(Debug, Clone, ContainsAliases)]
+    #[derive(Debug, Clone, Nameables)]
     enum A {
         Nums(Vec<Num>),
         Hex(Hex),
@@ -180,18 +180,18 @@ fn test_deep_nesting() {
         x: u32,
     }
 
-    #[derive(Debug, Clone, ContainsAliases)]
+    #[derive(Debug, Clone, Nameables)]
     struct C {
         aa: Vec<A>,
         bb: Vec<B>,
     }
 
-    impl ContainsAliases for B {
-        fn aliased_ids(&self) -> Vec<AnyAlias> {
+    impl Nameables for B {
+        fn nameables(&self) -> Vec<AnyNameable> {
             self.a
-                .aliased_ids()
+                .nameables()
                 .into_iter()
-                .chain(vec![AnyAlias(Box::new(self.x))])
+                .chain(vec![AnyNameable(Box::new(self.x))])
                 .collect()
         }
     }
@@ -220,7 +220,7 @@ fn test_deep_nesting() {
             },
         ],
     };
-    let a = c.aliased();
+    let a = c.renamed();
     assert_eq!(
         format!("{a}"),
         "C { aa: [Nums([⟪ID|1111⟫, ⟪ID|2222⟫, ⟪ID|3333⟫]), Hex(⟪X|0101⟫)], bb: [B { a: Nums([⟪ID|1111⟫, ⟪ID|2222⟫, ⟪ID|3333⟫]), x: 1234567890 }, B { a: Hex(⟪X|0202⟫), x: 1234567890 }] }"

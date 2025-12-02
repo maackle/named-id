@@ -13,21 +13,21 @@ use crate::*;
 static SHORT_ID_CACHE: LazyLock<Mutex<HashMap<String, String>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-static ALIASES: LazyLock<Mutex<HashMap<String, String>>> =
+static NAMES: LazyLock<Mutex<HashMap<String, String>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-pub trait AliasedId: Debug + Display {
-    fn with_alias(self, alias: &str) -> Self
+pub trait Nameable: Debug + Display {
+    fn with_name(self, name: &str) -> Self
     where
         Self: Sized,
     {
-        let alias = if let Some(shortener) = self.shortener() {
+        let name = if let Some(shortener) = self.shortener() {
             let short = shortener.shorten(self.to_string());
-            bracketed(&format!("{}|{}", short, alias), self.brackets())
+            bracketed(&format!("{}|{}", short, name), self.brackets())
         } else {
-            bracketed(alias, self.brackets())
+            bracketed(name, self.brackets())
         };
-        set_alias_string(&self, &alias);
+        set_name_string(&self, &name);
         self
     }
 
@@ -36,7 +36,7 @@ pub trait AliasedId: Debug + Display {
         Self: Sized,
     {
         let short = bracketed(&self.short(), self.brackets());
-        set_alias_string(&self, &short);
+        set_name_string(&self, &short);
         self
     }
 
@@ -88,17 +88,17 @@ impl Shortener {
     }
 }
 
-impl<T> ContainsAliases for T
+impl<T> Nameables for T
 where
-    T: AliasedId + Clone + 'static,
+    T: Nameable + Clone + 'static,
 {
-    fn aliased_ids(&self) -> Vec<AnyAlias> {
-        vec![AnyAlias(Box::new(self.clone()))]
+    fn nameables(&self) -> Vec<AnyNameable> {
+        vec![AnyNameable(Box::new(self.clone()))]
     }
 }
 
-pub(crate) fn get_alias_string(id: &AnyAlias) -> String {
-    ALIASES
+pub(crate) fn get_name_string(id: &AnyNameable) -> String {
+    NAMES
         .lock()
         .unwrap()
         .get(&format!("{id:?}"))
@@ -106,14 +106,14 @@ pub(crate) fn get_alias_string(id: &AnyAlias) -> String {
         .unwrap_or_else(|| id.to_string())
 }
 
-pub(crate) fn set_alias_string(id: &dyn Debug, alias: &str) {
-    let existing = ALIASES
+pub(crate) fn set_name_string(id: &dyn Debug, name: &str) {
+    let existing = NAMES
         .lock()
         .unwrap()
-        .insert(format!("{id:?}"), alias.to_string());
+        .insert(format!("{id:?}"), name.to_string());
     if let Some(old) = existing {
-        if old != alias {
-            tracing::warn!(?old, new = ?alias, "alias already exists, replacing");
+        if old != name {
+            tracing::warn!(?old, new = ?name, "name already exists, replacing");
         }
     }
 }
