@@ -65,6 +65,7 @@ where
 mod tests {
 
     use crate::{Aliasable, AliasedId, ShortId};
+    use pretty_assertions::assert_eq;
 
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
     struct TestId(u64);
@@ -87,6 +88,17 @@ mod tests {
         let a = v.aliased();
         assert_eq!(format!("{a}"), "[⟪ID|1111⟫, ⟪ID|2222⟫, ⟪ID|3333⟫]");
         assert_eq!(format!("{a:?}"), "[⟪ID|1111⟫, ⟪ID|2222⟫, ⟪ID|3333⟫]");
+        assert_eq!(
+            format!("{a:#?}"),
+            "
+[
+    ⟪ID|1111⟫,
+    ⟪ID|2222⟫,
+    ⟪ID|3333⟫,
+]
+        "
+            .trim()
+        );
 
         let s = std::collections::BTreeSet::from([
             TestId(11111111),
@@ -96,6 +108,17 @@ mod tests {
         let a = s.aliased();
         assert_eq!(format!("{a}"), "{⟪ID|1111⟫, ⟪ID|2222⟫, ⟪ID|3333⟫}");
         assert_eq!(format!("{a:?}"), "{⟪ID|1111⟫, ⟪ID|2222⟫, ⟪ID|3333⟫}");
+        assert_eq!(
+            format!("{a:#?}"),
+            "
+{
+    ⟪ID|1111⟫,
+    ⟪ID|2222⟫,
+    ⟪ID|3333⟫,
+}
+        "
+            .trim()
+        );
     }
 
     #[test]
@@ -113,6 +136,26 @@ mod tests {
         assert_eq!(
             format!("{a:?}"),
             "{⟪ID|1111⟫: [⟪ID|2222⟫, ⟪ID|5555⟫], ⟪ID|2222⟫: [⟪ID|3333⟫, ⟪ID|6666⟫], ⟪ID|3333⟫: [⟪ID|4444⟫, ⟪ID|7777⟫]}"
+        );
+        assert_eq!(
+            format!("{a:#?}"),
+            "
+{
+    ⟪ID|1111⟫: [
+        ⟪ID|2222⟫,
+        ⟪ID|5555⟫,
+    ],
+    ⟪ID|2222⟫: [
+        ⟪ID|3333⟫,
+        ⟪ID|6666⟫,
+    ],
+    ⟪ID|3333⟫: [
+        ⟪ID|4444⟫,
+        ⟪ID|7777⟫,
+    ],
+}
+            "
+            .trim()
         );
     }
 }

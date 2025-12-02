@@ -4,6 +4,8 @@ use std::{
     sync::{LazyLock, Mutex},
 };
 
+use regex::Regex;
+
 use crate::{Aliasable, ShortId, bracketed};
 
 static ALIASES: LazyLock<Mutex<HashMap<String, String>>> =
@@ -64,23 +66,6 @@ fn get_alias_string(id: &dyn AliasedId) -> String {
 
 pub struct Aliased<T>(T);
 
-impl<T: Aliasable> Aliased<T> {
-    fn display(&self) -> String {
-        let debug = format!("{:?}", self.0);
-        let patterns = self
-            .0
-            .aliased_ids()
-            .iter()
-            .map(|id| (format!("{:?}", id), get_alias_string(*id)))
-            .collect::<Vec<_>>();
-        let mut result = debug.clone();
-        for (pattern, replacement) in patterns {
-            result = result.replace(&pattern, &replacement);
-        }
-        result
-    }
-}
-
 impl<T> From<T> for Aliased<T>
 where
     T: Aliasable,
@@ -95,7 +80,7 @@ where
     T: Aliasable,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.display())
+        write!(f, "{:?}", self)
     }
 }
 
@@ -104,7 +89,68 @@ where
     T: Aliasable,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.display())
+        let pretty = f.alternate();
+        let debug = if pretty {
+            format!("{:#?}", self.0)
+        } else {
+            format!("{:?}", self.0)
+        };
+        let patterns = self
+            .0
+            .aliased_ids()
+            .iter()
+            .map(|id| {
+                let pat = if pretty {
+                    pretty_pattern(&format!("{:#?}", id))
+                } else {
+                    format!("{:?}", id)
+                };
+                (pat, get_alias_string(*id))
+            })
+            .collect::<Vec<_>>();
+        let mut result = debug;
+        for (pattern, replacement) in patterns {
+            if pretty {
+                result = Regex::new(&pattern)
+                    .unwrap()
+                    .replace_all(&result, PrettyReplacer(&replacement))
+                    .to_string();
+            } else {
+                result = result.replace(&pattern, &replacement);
+            }
+        }
+        write!(f, "{}", result)
+    }
+}
+
+fn pretty_pattern(pretty_dbg: &str) -> String {
+    pretty_dbg
+        .split('\n')
+        .map(|line| format!(" *{}", regex::escape(line)))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+struct PrettyReplacer<'a>(&'a str);
+
+impl<'a> regex::Replacer for PrettyReplacer<'a> {
+    fn replace_append(&mut self, caps: &regex::Captures<'_>, dst: &mut String) {
+        for cap in caps.iter() {
+            let cap = cap.unwrap();
+            let spaces = cap
+                .as_str()
+                .chars()
+                .take_while(|c| c.is_whitespace())
+                .collect::<String>();
+            // let spaces = " ".repeat(cap.start() - 1);
+            let r = self
+                .0
+                .split('\n')
+                .map(|line| format!("{spaces}{line}"))
+                .collect::<Vec<_>>()
+                .join("\n");
+            dst.push_str(&r);
+        }
     }
 }
 
