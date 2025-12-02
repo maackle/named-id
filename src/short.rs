@@ -4,42 +4,26 @@ use std::{
     sync::{LazyLock, Mutex},
 };
 
-static PREFIX_CACHE: LazyLock<Mutex<HashMap<String, TypeId>>> =
+static PREFIX_CACHE: LazyLock<Mutex<HashMap<&'static str, TypeId>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 static SHORT_ID_CACHE: LazyLock<Mutex<HashMap<String, String>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 pub trait ShortId: 'static {
-    const PREFIX: &'static str;
-    const LENGTH: usize = 4;
-
     fn to_short_string(&self) -> String;
 
-    fn prefix() -> String {
-        let prefix = Self::PREFIX.to_string();
-        debug_assert!(
-            {
-                let tid = TypeId::of::<Self>();
-                let r = PREFIX_CACHE.lock().unwrap().insert(prefix.clone(), tid);
-                if let Some(existing) = r {
-                    existing == tid
-                } else {
-                    true
-                }
-            },
-            "\"{prefix}\" has already been registered as a ShortId::PREFIX"
-        );
-        prefix
-    }
+    fn prefix(&self) -> &'static str;
 
     fn short(&self) -> String {
-        let original = ShortId::to_short_string(self);
+        assert_prefix_unique(self);
+        let original = self.to_short_string();
         let mut s = original.clone();
 
-        s.truncate(Self::LENGTH);
+        s.truncate(self.length());
 
-        let short_id = format!("{}|{s}", Self::prefix());
+        let short_id = format!("{}|{s}", self.prefix());
+
         if let Some(existing) = SHORT_ID_CACHE
             .lock()
             .unwrap()
@@ -55,6 +39,26 @@ pub trait ShortId: 'static {
         }
         short_id
     }
+
+    fn length(&self) -> usize {
+        4
+    }
+}
+
+fn assert_prefix_unique<T: ShortId + ?Sized>(t: &T) {
+    let prefix = t.prefix();
+    debug_assert!(
+        {
+            let tid = TypeId::of::<T>();
+            let r = PREFIX_CACHE.lock().unwrap().insert(prefix, tid);
+            if let Some(existing) = r {
+                existing == tid
+            } else {
+                true
+            }
+        },
+        "\"{prefix}\" has already been registered as a ShortId::PREFIX"
+    );
 }
 
 #[cfg(test)]
@@ -66,7 +70,9 @@ mod tests {
     struct TestId(u64);
 
     impl ShortId for TestId {
-        const PREFIX: &'static str = "ID";
+        fn prefix(&self) -> &'static str {
+            "ID"
+        }
 
         fn to_short_string(&self) -> String {
             format!("{}", self.0)
@@ -95,7 +101,10 @@ mod tests {
     fn test_prefix_collision() {
         struct TestId2(u64);
         impl ShortId for TestId2 {
-            const PREFIX: &'static str = "ID";
+            fn prefix(&self) -> &'static str {
+                "ID"
+            }
+
             fn to_short_string(&self) -> String {
                 format!("{}", self.0)
             }

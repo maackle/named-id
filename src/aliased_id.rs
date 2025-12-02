@@ -10,20 +10,14 @@ static ALIASES: LazyLock<Mutex<HashMap<String, String>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 pub trait AliasedId: ShortId + Debug {
-    const SHOW_SHORT_ID: bool = true;
-    const BRACKETS: (&'static str, &'static str) = ("⟪", "⟫");
-
     fn with_alias(self, alias: &str) -> Aliased<Self>
     where
         Self: Sized,
     {
-        let alias = if Self::SHOW_SHORT_ID {
-            bracketed(&format!("{}|{}", self.short(), alias), Self::BRACKETS)
+        let alias = if self.show_short_id() {
+            bracketed(&format!("{}|{}", self.short(), alias), self.brackets())
         } else {
-            bracketed(
-                &format!("{}‖{}", <Self as ShortId>::prefix(), alias),
-                Self::BRACKETS,
-            )
+            bracketed(&format!("{}‖{}", self.prefix(), alias), self.brackets())
         };
         let existing = ALIASES
             .lock()
@@ -38,7 +32,15 @@ pub trait AliasedId: ShortId + Debug {
     }
 
     fn default_alias(&self) -> String {
-        bracketed(&self.short(), Self::BRACKETS)
+        bracketed(&self.short(), self.brackets())
+    }
+
+    fn show_short_id(&self) -> bool {
+        true
+    }
+
+    fn brackets(&self) -> (&'static str, &'static str) {
+        ("⟪", "⟫")
     }
 }
 
@@ -46,15 +48,12 @@ impl<T> Aliasable for T
 where
     T: AliasedId,
 {
-    fn display(&self) -> String {
-        get_alias_string(self)
+    fn aliased_ids(&self) -> Vec<&dyn AliasedId> {
+        vec![self]
     }
 }
 
-fn get_alias_string<T>(id: &T) -> String
-where
-    T: AliasedId,
-{
+fn get_alias_string(id: &dyn AliasedId) -> String {
     ALIASES
         .lock()
         .unwrap()
@@ -64,6 +63,23 @@ where
 }
 
 pub struct Aliased<T>(T);
+
+impl<T: Aliasable> Aliased<T> {
+    fn display(&self) -> String {
+        let debug = format!("{:?}", self.0);
+        let patterns = self
+            .0
+            .aliased_ids()
+            .iter()
+            .map(|id| (format!("{:?}", id), get_alias_string(*id)))
+            .collect::<Vec<_>>();
+        let mut result = debug.clone();
+        for (pattern, replacement) in patterns {
+            result = result.replace(&pattern, &replacement);
+        }
+        result
+    }
+}
 
 impl<T> From<T> for Aliased<T>
 where
@@ -79,7 +95,7 @@ where
     T: Aliasable,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0.display())
+        write!(f, "{}", self.display())
     }
 }
 
@@ -88,7 +104,7 @@ where
     T: Aliasable,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0.display())
+        write!(f, "{}", self.display())
     }
 }
 
@@ -111,7 +127,9 @@ mod tests {
     struct TestId(u64);
 
     impl ShortId for TestId {
-        const PREFIX: &'static str = "ID";
+        fn prefix(&self) -> &'static str {
+            "ID"
+        }
 
         fn to_short_string(&self) -> String {
             format!("{}", self.0)
