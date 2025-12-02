@@ -11,6 +11,15 @@ where
     }
 }
 
+impl<T> ContainsAliases for Aliased<T>
+where
+    T: ContainsAliases,
+{
+    fn aliased_ids(&self) -> Vec<AnyAlias> {
+        self.0.aliased_ids()
+    }
+}
+
 impl<T> std::ops::Deref for Aliased<T>
 where
     T: ContainsAliases,
@@ -54,6 +63,7 @@ where
                 (pat, get_alias_string(&id))
             })
             .collect::<Vec<_>>();
+
         let mut result = debug;
         for (pattern, replacement) in patterns {
             if pretty {

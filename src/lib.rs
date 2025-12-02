@@ -4,9 +4,6 @@ mod newtype;
 mod tests;
 pub use newtype::*;
 
-mod short;
-pub use short::*;
-
 mod aliased_id;
 pub use aliased_id::*;
 

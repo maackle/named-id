@@ -3,20 +3,17 @@
 use super::*;
 use pretty_assertions::assert_eq;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::Display)]
 struct TestId(u64);
 
-impl ShortId for TestId {
-    fn prefix(&self) -> &'static str {
-        "ID"
-    }
-
-    fn to_short_string(&self) -> String {
-        format!("{}", self.0)
+impl AliasedId for TestId {
+    fn shortener(&self) -> Option<Shortener> {
+        Some(Shortener {
+            length: 4,
+            prefix: "ID",
+        })
     }
 }
-
-impl AliasedId for TestId {}
 
 #[test]
 fn test_short_id() {
@@ -34,31 +31,6 @@ fn test_short_id() {
 }
 
 #[test]
-#[ignore = "can't test this because cargo test gives different TypeIds to the same struct"]
-fn test_prefix_collision() {
-    struct TestId2(u64);
-    impl ShortId for TestId2 {
-        fn prefix(&self) -> &'static str {
-            "ID"
-        }
-
-        fn to_short_string(&self) -> String {
-            format!("{}", self.0)
-        }
-    }
-
-    std::panic::catch_unwind(|| {
-        TestId2(1234567890).short();
-    })
-    .unwrap();
-
-    std::panic::catch_unwind(|| {
-        TestId(1234567890).short();
-    })
-    .unwrap_err();
-}
-
-#[test]
 fn test_aliased_id() {
     let id1 = TestId(1234567890).with_alias("foo");
     let id2 = TestId(2345678901).with_alias("bar");
@@ -71,12 +43,16 @@ fn test_aliased_id() {
     assert_eq!(id3.aliased().to_string(), "⟪ID|3456|baz⟫");
 
     assert_eq!(idx.aliased().to_string(), "⟪ID|1234|qux⟫");
-    assert_eq!(idz.aliased().to_string(), "⟪ID|9876⟫");
+    assert_eq!(idz.aliased().to_string(), "TestId(987654321)");
 }
 
 #[test]
 fn test_aliased_id_vec() {
-    let v = vec![TestId(11111111), TestId(22222222), TestId(33333333)];
+    let v = vec![
+        TestId(11111111).with_short(),
+        TestId(22222222).with_short(),
+        TestId(33333333).with_short(),
+    ];
     let a = v.aliased();
     assert_eq!(format!("{a}"), "[⟪ID|1111⟫, ⟪ID|2222⟫, ⟪ID|3333⟫]");
     assert_eq!(format!("{a:?}"), "[⟪ID|1111⟫, ⟪ID|2222⟫, ⟪ID|3333⟫]");
@@ -113,9 +89,18 @@ fn test_aliased_id_vec() {
 #[test]
 fn test_aliased_id_maps() {
     let s = std::collections::BTreeMap::from([
-        (TestId(11111111), vec![TestId(22222222), TestId(55555555)]),
-        (TestId(22222222), vec![TestId(33333333), TestId(66666666)]),
-        (TestId(33333333), vec![TestId(44444444), TestId(77777777)]),
+        (
+            TestId(11111111).with_short(),
+            vec![TestId(22222222).with_short(), TestId(55555555).with_short()],
+        ),
+        (
+            TestId(22222222).with_short(),
+            vec![TestId(33333333).with_short(), TestId(66666666).with_short()],
+        ),
+        (
+            TestId(33333333).with_short(),
+            vec![TestId(44444444).with_short(), TestId(77777777).with_short()],
+        ),
     ]);
     let a = s.aliased();
     assert_eq!(

@@ -1,14 +1,11 @@
 use crate::{Aliased, AliasedId};
 
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 
-pub struct AnyAlias(Box<dyn Debug>);
+pub trait AnyAliasable: Debug + Display {}
+impl<T: Debug + Display> AnyAliasable for T {}
 
-impl<T: AliasedId> From<T> for AnyAlias {
-    fn from(id: T) -> Self {
-        AnyAlias(Box::new(id))
-    }
-}
+pub struct AnyAlias(pub(crate) Box<dyn AnyAliasable>);
 
 impl std::ops::Deref for AnyAlias {
     type Target = dyn Debug;
@@ -19,7 +16,7 @@ impl std::ops::Deref for AnyAlias {
 
 impl std::fmt::Display for AnyAlias {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.0)
+        write!(f, "{:?}", self)
     }
 }
 
