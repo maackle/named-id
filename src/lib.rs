@@ -1,13 +1,16 @@
 //! A utility for making logs more readable by shortening and aliasing long IDs.
 
+mod newtype;
+pub use newtype::*;
+
 mod short;
 pub use short::*;
 
 mod aliased_id;
 pub use aliased_id::*;
 
-mod aliasable;
-pub use aliasable::*;
+mod contains_aliases;
+pub use contains_aliases::*;
 
 pub(crate) fn bracketed(s: &str, (b1, b2): (&'static str, &'static str)) -> String {
     format!("{b1}{s}{b2}")

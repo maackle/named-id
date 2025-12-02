@@ -2,7 +2,7 @@ use crate::{Aliased, AliasedId};
 
 use std::fmt::Debug;
 
-pub trait Aliasable: Sized + Debug {
+pub trait ContainsAliases: Sized + Debug {
     fn aliased_ids(&self) -> Vec<&dyn AliasedId>;
 
     fn aliased(self) -> Aliased<Self> {
@@ -10,37 +10,37 @@ pub trait Aliasable: Sized + Debug {
     }
 }
 
-impl<T> Aliasable for Vec<T>
+impl<T> ContainsAliases for Vec<T>
 where
-    T: Aliasable,
+    T: ContainsAliases,
 {
     fn aliased_ids(&self) -> Vec<&dyn AliasedId> {
         self.iter().flat_map(|t| t.aliased_ids()).collect()
     }
 }
 
-impl<T> Aliasable for std::collections::HashSet<T>
+impl<T> ContainsAliases for std::collections::HashSet<T>
 where
-    T: Aliasable,
+    T: ContainsAliases,
 {
     fn aliased_ids(&self) -> Vec<&dyn AliasedId> {
         self.iter().flat_map(|t| t.aliased_ids()).collect()
     }
 }
 
-impl<T> Aliasable for std::collections::BTreeSet<T>
+impl<T> ContainsAliases for std::collections::BTreeSet<T>
 where
-    T: Aliasable,
+    T: ContainsAliases,
 {
     fn aliased_ids(&self) -> Vec<&dyn AliasedId> {
         self.iter().flat_map(|t| t.aliased_ids()).collect()
     }
 }
 
-impl<K, V> Aliasable for std::collections::HashMap<K, V>
+impl<K, V> ContainsAliases for std::collections::HashMap<K, V>
 where
-    K: Aliasable,
-    V: Aliasable,
+    K: ContainsAliases,
+    V: ContainsAliases,
 {
     fn aliased_ids(&self) -> Vec<&dyn AliasedId> {
         self.iter()
@@ -49,10 +49,10 @@ where
     }
 }
 
-impl<K, V> Aliasable for std::collections::BTreeMap<K, V>
+impl<K, V> ContainsAliases for std::collections::BTreeMap<K, V>
 where
-    K: Aliasable,
-    V: Aliasable,
+    K: ContainsAliases,
+    V: ContainsAliases,
 {
     fn aliased_ids(&self) -> Vec<&dyn AliasedId> {
         self.iter()
@@ -64,7 +64,7 @@ where
 #[cfg(test)]
 mod tests {
 
-    use crate::{Aliasable, AliasedId, ShortId};
+    use crate::{AliasedId, ContainsAliases, ShortId};
     use pretty_assertions::assert_eq;
 
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
