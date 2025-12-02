@@ -46,14 +46,14 @@ pub trait AliasedId: ShortId + Debug {
 
 impl<T> ContainsAliases for T
 where
-    T: AliasedId,
+    T: AliasedId + Clone,
 {
-    fn aliased_ids(&self) -> Vec<&dyn AliasedId> {
-        vec![self]
+    fn aliased_ids(&self) -> Vec<AnyAlias> {
+        vec![self.to_owned().into()]
     }
 }
 
-pub(crate) fn get_alias_string(id: &dyn AliasedId) -> String {
+pub(crate) fn get_alias_string(id: &AnyAlias) -> String {
     ALIASES
         .lock()
         .unwrap()

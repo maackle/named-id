@@ -1,10 +1,10 @@
 use std::{
-    any::TypeId,
     collections::HashMap,
     sync::{LazyLock, Mutex},
 };
 
-static PREFIX_CACHE: LazyLock<Mutex<HashMap<&'static str, TypeId>>> =
+#[cfg(not(test))]
+static PREFIX_CACHE: LazyLock<Mutex<HashMap<&'static str, std::any::TypeId>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 static SHORT_ID_CACHE: LazyLock<Mutex<HashMap<String, String>>> =
@@ -45,21 +45,23 @@ pub trait ShortId: 'static {
     }
 }
 
+#[allow(unused)]
 fn assert_prefix_unique<T: ShortId + ?Sized>(t: &T) {
-    let prefix = t.prefix();
-
     #[cfg(test)]
     {
         // the same type gets different TypeIds in test suites.
     }
 
     #[cfg(not(test))]
-    debug_assert!(
-        {
-            let tid = TypeId::of::<T>();
-            let r = PREFIX_CACHE.lock().unwrap().insert(prefix, tid);
-            r.map(|t| t == tid).unwrap_or(true)
-        },
-        "\"{prefix}\" has already been registered as a ShortId::PREFIX"
-    );
+    {
+        let prefix = t.prefix();
+        debug_assert!(
+            {
+                let tid = std::any::TypeId::of::<T>();
+                let r = PREFIX_CACHE.lock().unwrap().insert(prefix, tid);
+                r.map(|t| t == tid).unwrap_or(true)
+            },
+            "\"{prefix}\" has already been registered as a ShortId::PREFIX"
+        );
+    }
 }

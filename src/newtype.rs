@@ -44,14 +44,14 @@ where
         let patterns = self
             .0
             .aliased_ids()
-            .iter()
+            .into_iter()
             .map(|id| {
                 let pat = if pretty {
                     pretty_pattern(&format!("{:#?}", id))
                 } else {
                     format!("{:?}", id)
                 };
-                (pat, get_alias_string(*id))
+                (pat, get_alias_string(&id))
             })
             .collect::<Vec<_>>();
         let mut result = debug;
