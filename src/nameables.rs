@@ -2,6 +2,8 @@ use crate::Renamed;
 
 use std::fmt::Debug;
 
+mod impls;
+
 pub trait AnyNameableBounds: Debug + 'static {}
 impl<T: Debug + 'static> AnyNameableBounds for T {}
 
@@ -41,56 +43,5 @@ pub trait Nameables: Sized + Debug {
 
     fn renamed(self) -> Renamed<Self> {
         self.into()
-    }
-}
-
-impl<T> Nameables for Vec<T>
-where
-    T: Nameables,
-{
-    fn nameables(&self) -> Vec<AnyNameable> {
-        self.iter().flat_map(|t| t.nameables()).collect()
-    }
-}
-
-impl<T> Nameables for std::collections::HashSet<T>
-where
-    T: Nameables,
-{
-    fn nameables(&self) -> Vec<AnyNameable> {
-        self.iter().flat_map(|t| t.nameables()).collect()
-    }
-}
-
-impl<T> Nameables for std::collections::BTreeSet<T>
-where
-    T: Nameables,
-{
-    fn nameables(&self) -> Vec<AnyNameable> {
-        self.iter().flat_map(|t| t.nameables()).collect()
-    }
-}
-
-impl<K, V> Nameables for std::collections::HashMap<K, V>
-where
-    K: Nameables,
-    V: Nameables,
-{
-    fn nameables(&self) -> Vec<AnyNameable> {
-        self.iter()
-            .flat_map(|(k, v)| k.nameables().into_iter().chain(v.nameables()))
-            .collect()
-    }
-}
-
-impl<K, V> Nameables for std::collections::BTreeMap<K, V>
-where
-    K: Nameables,
-    V: Nameables,
-{
-    fn nameables(&self) -> Vec<AnyNameable> {
-        self.iter()
-            .flat_map(|(k, v)| k.nameables().into_iter().chain(v.nameables()))
-            .collect()
     }
 }
