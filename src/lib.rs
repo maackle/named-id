@@ -1,6 +1,7 @@
 //! A utility for making logs more readable by shortening and aliasing long IDs.
 
 mod newtype;
+mod tests;
 pub use newtype::*;
 
 mod short;

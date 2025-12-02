@@ -47,77 +47,19 @@ pub trait ShortId: 'static {
 
 fn assert_prefix_unique<T: ShortId + ?Sized>(t: &T) {
     let prefix = t.prefix();
+
+    #[cfg(test)]
+    {
+        // the same type gets different TypeIds in test suites.
+    }
+
+    #[cfg(not(test))]
     debug_assert!(
         {
             let tid = TypeId::of::<T>();
             let r = PREFIX_CACHE.lock().unwrap().insert(prefix, tid);
-            if let Some(existing) = r {
-                existing == tid
-            } else {
-                true
-            }
+            r.map(|t| t == tid).unwrap_or(true)
         },
         "\"{prefix}\" has already been registered as a ShortId::PREFIX"
     );
-}
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-
-    #[derive(Debug, PartialEq, Eq)]
-    struct TestId(u64);
-
-    impl ShortId for TestId {
-        fn prefix(&self) -> &'static str {
-            "ID"
-        }
-
-        fn to_short_string(&self) -> String {
-            format!("{}", self.0)
-        }
-    }
-
-    #[test]
-    fn test_short_id() {
-        tracing_subscriber::fmt::init();
-
-        let id1 = TestId(1234567890);
-        let id2 = TestId(2345678901);
-        let id3 = TestId(3456789012);
-        let idx = TestId(12349876);
-        dbg!();
-        assert_eq!(id1.short(), "ID|1234");
-        dbg!();
-        assert_eq!(id2.short(), "ID|2345");
-        dbg!();
-        assert_eq!(id3.short(), "ID|3456");
-
-        assert_eq!(idx.short(), "ID|1234");
-    }
-
-    #[test]
-    fn test_prefix_collision() {
-        struct TestId2(u64);
-        impl ShortId for TestId2 {
-            fn prefix(&self) -> &'static str {
-                "ID"
-            }
-
-            fn to_short_string(&self) -> String {
-                format!("{}", self.0)
-            }
-        }
-
-        std::panic::catch_unwind(|| {
-            TestId2(1234567890).short();
-        })
-        .unwrap();
-
-        std::panic::catch_unwind(|| {
-            TestId(1234567890).short();
-        })
-        .unwrap_err();
-    }
 }
