@@ -1,11 +1,17 @@
-use crate::{Aliased, AliasedId};
+use crate::Aliased;
 
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 
-pub trait AnyAliasable: Debug + Display {}
-impl<T: Debug + Display> AnyAliasable for T {}
+pub trait AnyAliasable: Debug + 'static {}
+impl<T: Debug + 'static> AnyAliasable for T {}
 
 pub struct AnyAlias(pub(crate) Box<dyn AnyAliasable>);
+
+impl AnyAlias {
+    pub fn new<T: AnyAliasable>(t: T) -> Self {
+        AnyAlias(Box::new(t))
+    }
+}
 
 impl std::ops::Deref for AnyAlias {
     type Target = dyn Debug;

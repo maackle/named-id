@@ -1,5 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use super::*;
 
+#[derive(Clone, Copy, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Aliased<T>(T);
 
 impl<T> From<T> for Aliased<T>

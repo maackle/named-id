@@ -6,9 +6,9 @@ use std::{
 
 use crate::*;
 
-#[cfg(not(test))]
-static PREFIX_CACHE: LazyLock<Mutex<HashMap<&'static str, std::any::TypeId>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
+// #[cfg(not(test))]
+// static PREFIX_CACHE: LazyLock<Mutex<HashMap<&'static str, std::any::TypeId>>> =
+//     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 static SHORT_ID_CACHE: LazyLock<Mutex<HashMap<String, String>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
