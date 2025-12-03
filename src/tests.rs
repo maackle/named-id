@@ -172,11 +172,14 @@ fn test_deep_nesting() {
     enum A {
         Nums(Vec<Num>),
         Hex(Hex),
+        #[nameables(skip)]
+        Skip(Num),
     }
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, Nameables)]
     struct B {
         a: A,
+        #[nameables(skip)]
         x: u32,
     }
 
@@ -184,16 +187,6 @@ fn test_deep_nesting() {
     struct C {
         aa: Vec<A>,
         bb: Vec<B>,
-    }
-
-    impl Nameables for B {
-        fn nameables(&self) -> Vec<AnyNameable> {
-            self.a
-                .nameables()
-                .into_iter()
-                .chain(vec![AnyNameable(Box::new(self.x))])
-                .collect()
-        }
     }
 
     let c = C {
@@ -204,6 +197,7 @@ fn test_deep_nesting() {
                 Num::sh(33333333),
             ]),
             A::Hex(Hex::sh(1)),
+            A::Skip(Num(99999999)),
         ],
         bb: vec![
             B {
@@ -223,11 +217,11 @@ fn test_deep_nesting() {
     let a = c.renamed();
     assert_eq!(
         format!("{a}"),
-        "C { aa: [Nums([⟪ID|1111⟫, ⟪ID|2222⟫, ⟪ID|3333⟫]), Hex(⟪X|0101⟫)], bb: [B { a: Nums([⟪ID|1111⟫, ⟪ID|2222⟫, ⟪ID|3333⟫]), x: 1234567890 }, B { a: Hex(⟪X|0202⟫), x: 1234567890 }] }"
+        "C { aa: [Nums([⟪ID|1111⟫, ⟪ID|2222⟫, ⟪ID|3333⟫]), Hex(⟪X|0101⟫), Skip(Num(99999999))], bb: [B { a: Nums([⟪ID|1111⟫, ⟪ID|2222⟫, ⟪ID|3333⟫]), x: 1234567890 }, B { a: Hex(⟪X|0202⟫), x: 1234567890 }] }"
     );
     assert_eq!(
         format!("{a:?}"),
-        "C { aa: [Nums([⟪ID|1111⟫, ⟪ID|2222⟫, ⟪ID|3333⟫]), Hex(⟪X|0101⟫)], bb: [B { a: Nums([⟪ID|1111⟫, ⟪ID|2222⟫, ⟪ID|3333⟫]), x: 1234567890 }, B { a: Hex(⟪X|0202⟫), x: 1234567890 }] }"
+        "C { aa: [Nums([⟪ID|1111⟫, ⟪ID|2222⟫, ⟪ID|3333⟫]), Hex(⟪X|0101⟫), Skip(Num(99999999))], bb: [B { a: Nums([⟪ID|1111⟫, ⟪ID|2222⟫, ⟪ID|3333⟫]), x: 1234567890 }, B { a: Hex(⟪X|0202⟫), x: 1234567890 }] }"
     );
     assert_eq!(
         format!("{a:#?}"),
@@ -243,6 +237,11 @@ C {
         ),
         Hex(
             ⟪X|0101⟫,
+        ),
+        Skip(
+            Num(
+                99999999,
+            ),
         ),
     ],
     bb: [

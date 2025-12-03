@@ -1,9 +1,22 @@
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
-use syn::{Data, DeriveInput, Fields, Index, parse_macro_input};
+use syn::{Attribute, Data, DeriveInput, Fields, Index, parse_macro_input};
 
-#[proc_macro_derive(Nameables)]
+/// Check if a field or variant has the `#[nameables(skip)]` attribute
+fn has_skip_attr(attrs: &[Attribute]) -> bool {
+    attrs.iter().any(|attr| {
+        if attr.path().is_ident("nameables") {
+            // Parse the tokens inside the parentheses as a path
+            if let Ok(path) = attr.parse_args::<syn::Path>() {
+                return path.is_ident("skip");
+            }
+        }
+        false
+    })
+}
+
+#[proc_macro_derive(Nameables, attributes(nameables))]
 pub fn derive_nameables(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
@@ -13,9 +26,11 @@ pub fn derive_nameables(input: TokenStream) -> TokenStream {
             match &data_struct.fields {
                 Fields::Named(fields) => {
                     // For named fields, collect all field.nameables() and chain them
+                    // Skip fields with #[nameables(skip)]
                     let field_calls: Vec<_> = fields
                         .named
                         .iter()
+                        .filter(|field| !has_skip_attr(&field.attrs))
                         .map(|field| {
                             let field_name = &field.ident;
                             quote! {
@@ -42,10 +57,12 @@ pub fn derive_nameables(input: TokenStream) -> TokenStream {
                 }
                 Fields::Unnamed(fields) => {
                     // For tuple structs, collect all field.nameables() and chain them
+                    // Skip fields with #[nameables(skip)]
                     let field_calls: Vec<_> = fields
                         .unnamed
                         .iter()
                         .enumerate()
+                        .filter(|(_, field)| !has_skip_attr(&field.attrs))
                         .map(|(idx, _field)| {
                             let index = Index::from(idx);
                             quote! {
@@ -85,62 +102,104 @@ pub fn derive_nameables(input: TokenStream) -> TokenStream {
                 .iter()
                 .map(|variant| {
                     let variant_name = &variant.ident;
+                    // If the variant itself has #[nameables(skip)], skip all its fields
+                    let variant_skip = has_skip_attr(&variant.attrs);
+
                     match &variant.fields {
                         Fields::Named(fields) => {
-                            let field_names: Vec<_> =
-                                fields.named.iter().map(|f| &f.ident).collect();
-                            let field_calls: Vec<_> = field_names
-                                .iter()
-                                .map(|field_name| {
-                                    quote! {
-                                        #field_name.nameables()
-                                    }
-                                })
-                                .collect();
-
-                            if field_calls.is_empty() {
+                            if variant_skip {
                                 quote! {
                                     #name::#variant_name { .. } => Vec::new(),
                                 }
                             } else {
-                                quote! {
-                                    #name::#variant_name { #(#field_names,)* } => {
-                                        let mut result = Vec::new();
-                                        #(
-                                            result.extend(#field_calls);
-                                        )*
-                                        result
-                                    },
+                                // Filter out fields with #[nameables(skip)]
+                                let field_calls: Vec<_> = fields
+                                    .named
+                                    .iter()
+                                    .filter(|f| !has_skip_attr(&f.attrs))
+                                    .map(|f| {
+                                        let field_name = &f.ident;
+                                        quote! { #field_name.nameables() }
+                                    })
+                                    .collect();
+
+                                // We still need to bind all fields in the pattern, even skipped ones
+                                let all_field_names: Vec<_> =
+                                    fields.named.iter().map(|f| &f.ident).collect();
+
+                                if field_calls.is_empty() {
+                                    quote! {
+                                        #name::#variant_name { .. } => Vec::new(),
+                                    }
+                                } else {
+                                    quote! {
+                                        #name::#variant_name { #(#all_field_names,)* } => {
+                                            let mut result = Vec::new();
+                                            #(
+                                                result.extend(#field_calls);
+                                            )*
+                                            result
+                                        },
+                                    }
                                 }
                             }
                         }
                         Fields::Unnamed(fields) => {
-                            if fields.unnamed.is_empty() {
-                                quote! {
-                                    #name::#variant_name() => Vec::new(),
+                            if variant_skip || fields.unnamed.is_empty() {
+                                if fields.unnamed.is_empty() {
+                                    quote! {
+                                        #name::#variant_name() => Vec::new(),
+                                    }
+                                } else {
+                                    let field_idents: Vec<_> = (0..fields.unnamed.len())
+                                        .map(|i| {
+                                            syn::Ident::new(
+                                                &format!("field_{}", i),
+                                                Span::call_site(),
+                                            )
+                                        })
+                                        .collect();
+                                    quote! {
+                                        #name::#variant_name(#(#field_idents,)*) => Vec::new(),
+                                    }
                                 }
                             } else {
-                                let field_idents: Vec<_> = (0..fields.unnamed.len())
+                                // Filter out fields with #[nameables(skip)]
+                                let field_calls: Vec<_> = fields
+                                    .unnamed
+                                    .iter()
+                                    .enumerate()
+                                    .filter(|(_, field)| !has_skip_attr(&field.attrs))
+                                    .map(|(i, _)| {
+                                        let ident = syn::Ident::new(
+                                            &format!("field_{}", i),
+                                            Span::call_site(),
+                                        );
+                                        quote! { #ident.nameables() }
+                                    })
+                                    .collect();
+
+                                // We still need to bind all fields in the pattern
+                                let all_field_idents: Vec<_> = (0..fields.unnamed.len())
                                     .map(|i| {
                                         syn::Ident::new(&format!("field_{}", i), Span::call_site())
                                     })
                                     .collect();
-                                let field_calls: Vec<_> = field_idents
-                                    .iter()
-                                    .map(|ident| {
-                                        quote! {
-                                            #ident.nameables()
-                                        }
-                                    })
-                                    .collect();
-                                quote! {
-                                    #name::#variant_name(#(#field_idents,)*) => {
-                                        let mut result = Vec::new();
-                                        #(
-                                            result.extend(#field_calls);
-                                        )*
-                                        result
-                                    },
+
+                                if field_calls.is_empty() {
+                                    quote! {
+                                        #name::#variant_name(#(#all_field_idents,)*) => Vec::new(),
+                                    }
+                                } else {
+                                    quote! {
+                                        #name::#variant_name(#(#all_field_idents,)*) => {
+                                            let mut result = Vec::new();
+                                            #(
+                                                result.extend(#field_calls);
+                                            )*
+                                            result
+                                        },
+                                    }
                                 }
                             }
                         }
