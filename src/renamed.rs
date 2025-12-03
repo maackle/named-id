@@ -47,39 +47,44 @@ where
     T: Nameables,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let pretty = f.alternate();
-        let debug = if pretty {
-            format!("{:#?}", self.0)
-        } else {
-            format!("{:?}", self.0)
-        };
-        let patterns = self
-            .0
-            .nameables()
-            .into_iter()
-            .map(|id| {
-                let pat = if pretty {
-                    pretty_pattern(&format!("{:#?}", id))
-                } else {
-                    format!("{:?}", id)
-                };
-                (pat, get_name_string(&id))
-            })
-            .collect::<Vec<_>>();
-
-        let mut result = debug;
-        for (pattern, replacement) in patterns {
-            if pretty {
-                result = regex::Regex::new(&pattern)
-                    .unwrap()
-                    .replace_all(&result, PrettyReplacer(&replacement))
-                    .to_string();
-            } else {
-                result = result.replace(&pattern, &replacement);
-            }
-        }
-        write!(f, "{}", result)
+        write!(
+            f,
+            "{}",
+            rename(&self.0, self.0.nameables().as_slice(), f.alternate())
+        )
     }
+}
+
+pub fn rename<T: std::fmt::Debug>(t: &T, nameables: &[AnyNameable], pretty: bool) -> String {
+    let debug = if pretty {
+        format!("{:#?}", t)
+    } else {
+        format!("{:?}", t)
+    };
+    let patterns = nameables
+        .into_iter()
+        .map(|id| {
+            let pat = if pretty {
+                pretty_pattern(&format!("{:#?}", id))
+            } else {
+                format!("{:?}", id)
+            };
+            (pat, get_name_string(&id))
+        })
+        .collect::<Vec<_>>();
+
+    let mut result = debug;
+    for (pattern, replacement) in patterns {
+        if pretty {
+            result = regex::Regex::new(&pattern)
+                .unwrap()
+                .replace_all(&result, PrettyReplacer(&replacement))
+                .to_string();
+        } else {
+            result = result.replace(&pattern, &replacement);
+        }
+    }
+    result
 }
 
 fn pretty_pattern(pretty_dbg: &str) -> String {
