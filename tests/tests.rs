@@ -1,8 +1,6 @@
-#![cfg(test)]
-
 use std::fmt::Display;
 
-use super::*;
+use named_id::*;
 use pretty_assertions::assert_eq;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::Display)]
@@ -165,8 +163,37 @@ fn test_named_id_maps() {
 }
 
 #[test]
+fn test_generic_nameables() {
+    #[derive(Debug, Clone, named_id::derive::Nameables)]
+    struct GenericStruct<X, Y> {
+        x: X,
+        y: Y,
+    }
+
+    #[derive(Debug, Clone, named_id::derive::Nameables)]
+    enum GenericEnum<X, Y> {
+        X(X),
+        Y(Y),
+    }
+
+    // Test that generics work
+    let gs = GenericStruct {
+        x: Num::sh(11111111),
+        y: Hex::sh(1),
+    };
+
+    assert_eq!(
+        format!("{:?}", gs.renamed()),
+        "GenericStruct { x: ⟪ID|1111⟫, y: ⟪X|0101⟫ }"
+    );
+
+    let ge: GenericEnum<Num, Hex> = GenericEnum::X(Num::sh(22222222));
+    assert_eq!(format!("{:?}", ge.renamed()), "X(⟪ID|2222⟫)");
+}
+
+#[test]
 fn test_deep_nesting() {
-    #[derive(Debug, Clone, Nameables)]
+    #[derive(Debug, Clone, named_id::derive::Nameables)]
     enum A {
         Nums(Vec<Num>),
         Hex(Hex),
@@ -174,7 +201,7 @@ fn test_deep_nesting() {
         Skip(Num),
     }
 
-    #[derive(Debug, Clone, Nameables)]
+    #[derive(Debug, Clone, named_id::derive::Nameables)]
     struct B {
         a: A,
         #[allow(unused)]
@@ -182,7 +209,7 @@ fn test_deep_nesting() {
         x: u32,
     }
 
-    #[derive(Debug, Clone, Nameables)]
+    #[derive(Debug, Clone, named_id::derive::Nameables)]
     struct C {
         aa: Vec<A>,
         bb: Vec<B>,

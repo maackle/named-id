@@ -20,6 +20,7 @@ fn has_skip_attr(attrs: &[Attribute]) -> bool {
 pub fn derive_nameables(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
+    let generics = &input.generics;
 
     let impl_block = match &input.data {
         Data::Struct(data_struct) => {
@@ -225,9 +226,22 @@ pub fn derive_nameables(input: TokenStream) -> TokenStream {
         }
     };
 
+    // Add Nameables bound to all type parameters
+    let mut generics_with_bounds = generics.clone();
+    for param in &mut generics_with_bounds.params {
+        if let syn::GenericParam::Type(type_param) = param {
+            type_param
+                .bounds
+                .push(syn::parse_quote!(named_id::Nameables));
+        }
+    }
+
+    // Split generics for impl and where clause
+    let (impl_generics, ty_generics, where_clause) = generics_with_bounds.split_for_impl();
+
     let expanded = quote! {
-        impl crate::Nameables for #name {
-            fn nameables(&self) -> ::std::vec::Vec<crate::AnyNameable> {
+        impl #impl_generics named_id::Nameables for #name #ty_generics #where_clause {
+            fn nameables(&self) -> ::std::vec::Vec<named_id::AnyNameable> {
                 #impl_block
             }
         }
