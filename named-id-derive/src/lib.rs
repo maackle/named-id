@@ -1,6 +1,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
+use std::collections::HashSet;
 use syn::{Attribute, Data, DeriveInput, Fields, Index, parse_macro_input};
 
 /// Check if a field or variant has the `#[nameables(skip)]` attribute
@@ -14,6 +15,91 @@ fn has_skip_attr(attrs: &[Attribute]) -> bool {
         }
         false
     })
+}
+
+/// Collect all generic type parameter identifiers used in a type
+fn collect_generic_params_in_type(
+    ty: &syn::Type,
+    generic_param_names: &HashSet<syn::Ident>,
+) -> HashSet<syn::Ident> {
+    let mut found = HashSet::new();
+
+    match ty {
+        syn::Type::Path(type_path) => {
+            // Check if this is a direct reference to a generic parameter
+            // (single segment with no arguments and no qself)
+            if type_path.qself.is_none() && type_path.path.segments.len() == 1 {
+                if let Some(segment) = type_path.path.segments.first() {
+                    if segment.arguments.is_empty() {
+                        let ident = &segment.ident;
+                        if generic_param_names.contains(ident) {
+                            found.insert(ident.clone());
+                        }
+                    } else if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
+                        // Handle nested generics like Vec<X>, Option<Y>, HashMap<K, V>, etc.
+                        for arg in &args.args {
+                            match arg {
+                                syn::GenericArgument::Type(nested_ty) => {
+                                    found.extend(collect_generic_params_in_type(
+                                        nested_ty,
+                                        generic_param_names,
+                                    ));
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+            } else if let Some(last_segment) = type_path.path.segments.last() {
+                // Handle paths with multiple segments like std::collections::HashMap<X, Y>
+                if let syn::PathArguments::AngleBracketed(args) = &last_segment.arguments {
+                    for arg in &args.args {
+                        match arg {
+                            syn::GenericArgument::Type(nested_ty) => {
+                                found.extend(collect_generic_params_in_type(
+                                    nested_ty,
+                                    generic_param_names,
+                                ));
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+        syn::Type::Tuple(tuple) => {
+            for elem in &tuple.elems {
+                found.extend(collect_generic_params_in_type(elem, generic_param_names));
+            }
+        }
+        syn::Type::Array(array) => {
+            found.extend(collect_generic_params_in_type(
+                &array.elem,
+                generic_param_names,
+            ));
+        }
+        syn::Type::Reference(reference) => {
+            found.extend(collect_generic_params_in_type(
+                &reference.elem,
+                generic_param_names,
+            ));
+        }
+        syn::Type::Ptr(ptr) => {
+            found.extend(collect_generic_params_in_type(
+                &ptr.elem,
+                generic_param_names,
+            ));
+        }
+        syn::Type::Slice(slice) => {
+            found.extend(collect_generic_params_in_type(
+                &slice.elem,
+                generic_param_names,
+            ));
+        }
+        _ => {}
+    }
+
+    found
 }
 
 #[proc_macro_derive(Nameables, attributes(nameables))]
@@ -226,13 +312,96 @@ pub fn derive_nameables(input: TokenStream) -> TokenStream {
         }
     };
 
-    // Add Nameables bound to all type parameters
+    // Collect all generic type parameter names
+    let generic_param_names: HashSet<_> = generics
+        .params
+        .iter()
+        .filter_map(|param| {
+            if let syn::GenericParam::Type(type_param) = param {
+                Some(type_param.ident.clone())
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Collect generic parameters used in non-skipped fields
+    let mut used_generic_params = HashSet::new();
+
+    match &input.data {
+        Data::Struct(data_struct) => match &data_struct.fields {
+            Fields::Named(fields) => {
+                for field in fields.named.iter() {
+                    if !has_skip_attr(&field.attrs) {
+                        used_generic_params.extend(collect_generic_params_in_type(
+                            &field.ty,
+                            &generic_param_names,
+                        ));
+                    }
+                }
+            }
+            Fields::Unnamed(fields) => {
+                for field in fields.unnamed.iter() {
+                    if !has_skip_attr(&field.attrs) {
+                        used_generic_params.extend(collect_generic_params_in_type(
+                            &field.ty,
+                            &generic_param_names,
+                        ));
+                    }
+                }
+            }
+            Fields::Unit => {}
+        },
+        Data::Enum(data_enum) => {
+            for variant in &data_enum.variants {
+                let variant_skip = has_skip_attr(&variant.attrs);
+                if variant_skip {
+                    continue;
+                }
+
+                match &variant.fields {
+                    Fields::Named(fields) => {
+                        for field in fields.named.iter() {
+                            if !has_skip_attr(&field.attrs) {
+                                used_generic_params.extend(collect_generic_params_in_type(
+                                    &field.ty,
+                                    &generic_param_names,
+                                ));
+                            }
+                        }
+                    }
+                    Fields::Unnamed(fields) => {
+                        for field in fields.unnamed.iter() {
+                            if !has_skip_attr(&field.attrs) {
+                                used_generic_params.extend(collect_generic_params_in_type(
+                                    &field.ty,
+                                    &generic_param_names,
+                                ));
+                            }
+                        }
+                    }
+                    Fields::Unit => {}
+                }
+            }
+        }
+        Data::Union(_) => {}
+    }
+
+    // Add bounds to type parameters:
+    // - Nameables bound only to type parameters used in non-skipped fields
+    // - Debug bound to all type parameters (required by Nameables trait)
     let mut generics_with_bounds = generics.clone();
     for param in &mut generics_with_bounds.params {
         if let syn::GenericParam::Type(type_param) = param {
-            type_param
-                .bounds
-                .push(syn::parse_quote!(named_id::Nameables));
+            // Always add Debug bound (required by Nameables trait)
+            type_param.bounds.push(syn::parse_quote!(::std::fmt::Debug));
+
+            // Add Nameables bound only if used in non-skipped fields
+            if used_generic_params.contains(&type_param.ident) {
+                type_param
+                    .bounds
+                    .push(syn::parse_quote!(named_id::Nameables));
+            }
         }
     }
 

@@ -163,11 +163,14 @@ fn test_named_id_maps() {
 }
 
 #[test]
+#[allow(unused)]
 fn test_generic_nameables() {
     #[derive(Debug, Clone, named_id::derive::Nameables)]
-    struct GenericStruct<X, Y> {
+    struct GenericStruct<X, Y, Z> {
         x: X,
         y: Y,
+        #[nameables(skip)]
+        z: Z,
     }
 
     #[derive(Debug, Clone, named_id::derive::Nameables)]
@@ -180,12 +183,27 @@ fn test_generic_nameables() {
     let gs = GenericStruct {
         x: Num::sh(11111111),
         y: Hex::sh(1),
+        z: 1234567890,
     };
 
+    // Verify that nameables() correctly skips the z field
+    let nameables = gs.nameables();
+    assert_eq!(nameables.len(), 2); // Only x and y, not z
+
+    let gs = gs.renamed();
     assert_eq!(
-        format!("{:?}", gs.renamed()),
-        "GenericStruct { x: ⟪ID|1111⟫, y: ⟪X|0101⟫ }"
+        format!("{:?}", gs),
+        "GenericStruct { x: ⟪ID|1111⟫, y: ⟪X|0101⟫, z: 1234567890 }"
     );
+
+    // The skipped field z won't be renamed (it's not in nameables()),
+    // but it will still appear in Debug output since Debug includes all fields
+    let debug_output = format!("{:?}", gs);
+    // x and y should be renamed
+    assert!(debug_output.contains("⟪ID|1111⟫"));
+    assert!(debug_output.contains("⟪X|0101⟫"));
+    // z should appear as-is (not renamed) since it's skipped
+    assert!(debug_output.contains("1234567890"));
 
     let ge: GenericEnum<Num, Hex> = GenericEnum::X(Num::sh(22222222));
     assert_eq!(format!("{:?}", ge.renamed()), "X(⟪ID|2222⟫)");
