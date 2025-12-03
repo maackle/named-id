@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
 use named_id::*;
 use pretty_assertions::assert_eq;
@@ -168,32 +168,36 @@ fn test_generic_nameables() {
     #[derive(Debug, Clone, named_id::derive::Nameables)]
     struct GenericStruct<X, Y, Z> {
         x: X,
-        y: Y,
+        y: (X, Y),
         #[nameables(skip)]
         z: Z,
     }
 
     #[derive(Debug, Clone, named_id::derive::Nameables)]
     enum GenericEnum<X, Y> {
-        X(X),
+        X {
+            #[nameables(skip)]
+            m: Vec<X>,
+            n: HashMap<X, Y>,
+        },
         Y(Y),
     }
 
     // Test that generics work
     let gs = GenericStruct {
         x: Num::sh(11111111),
-        y: Hex::sh(1),
+        y: (Num::sh(22222222), Hex::sh(1)),
         z: 1234567890,
     };
 
     // Verify that nameables() correctly skips the z field
     let nameables = gs.nameables();
-    assert_eq!(nameables.len(), 2); // Only x and y, not z
+    assert_eq!(nameables.len(), 3); // Only x and y, not z
 
     let gs = gs.renamed();
     assert_eq!(
         format!("{:?}", gs),
-        "GenericStruct { x: ⟪ID|1111⟫, y: ⟪X|0101⟫, z: 1234567890 }"
+        "GenericStruct { x: ⟪ID|1111⟫, y: (⟪ID|2222⟫, ⟪X|0101⟫), z: 1234567890 }"
     );
 
     // The skipped field z won't be renamed (it's not in nameables()),
@@ -205,8 +209,14 @@ fn test_generic_nameables() {
     // z should appear as-is (not renamed) since it's skipped
     assert!(debug_output.contains("1234567890"));
 
-    let ge: GenericEnum<Num, Hex> = GenericEnum::X(Num::sh(22222222));
-    assert_eq!(format!("{:?}", ge.renamed()), "X(⟪ID|2222⟫)");
+    let ge: GenericEnum<Num, Hex> = GenericEnum::X {
+        m: vec![Num::sh(22222222), Num::sh(33333333)],
+        n: HashMap::from([(Num::sh(44444444), Hex::sh(1))]),
+    };
+    assert_eq!(
+        format!("{:?}", ge.renamed()),
+        "X { m: [Num(22222222), Num(33333333)], n: {⟪ID|4444⟫: ⟪X|0101⟫} }"
+    );
 }
 
 #[test]
