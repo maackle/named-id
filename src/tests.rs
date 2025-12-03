@@ -166,8 +166,6 @@ fn test_named_id_maps() {
 
 #[test]
 fn test_deep_nesting() {
-    use named_id_derive::Nameables;
-
     #[derive(Debug, Clone, Nameables)]
     enum A {
         Nums(Vec<Num>),
@@ -179,6 +177,7 @@ fn test_deep_nesting() {
     #[derive(Debug, Clone, Nameables)]
     struct B {
         a: A,
+        #[allow(unused)]
         #[nameables(skip)]
         x: u32,
     }

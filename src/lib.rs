@@ -9,6 +9,8 @@ pub use nameable::*;
 mod nameables;
 pub use nameables::*;
 
+pub use named_id_derive::Nameables;
+
 mod tests;
 
 pub(crate) fn bracketed(s: &str, (b1, b2): (&'static str, &'static str)) -> String {
