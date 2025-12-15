@@ -68,11 +68,11 @@ fn test_named_id() {
     let idx = Num(12349876).with_name("qux");
     let idz = Num(987654321);
 
-    assert_eq!(id1.renamed().to_string(), "⟪ID|1234|foo⟫");
-    assert_eq!(id2.renamed().to_string(), "⟪ID|2345|bar⟫");
-    assert_eq!(id3.renamed().to_string(), "⟪ID|3456|baz⟫");
+    assert_eq!(id1.renamed().to_string(), "⟪ID|foo⟫");
+    assert_eq!(id2.renamed().to_string(), "⟪ID|bar⟫");
+    assert_eq!(id3.renamed().to_string(), "⟪ID|baz⟫");
 
-    assert_eq!(idx.renamed().to_string(), "⟪ID|1234|qux⟫");
+    assert_eq!(idx.renamed().to_string(), "⟪ID|qux⟫");
     assert_eq!(idz.renamed().to_string(), "Num(987654321)");
 }
 
@@ -165,18 +165,18 @@ fn test_named_id_maps() {
 #[test]
 #[allow(unused)]
 fn test_generic_nameables() {
-    #[derive(Debug, Clone, named_id::derive::Nameables)]
+    #[derive(Debug, Clone, named_id::RenameAll)]
     struct GenericStruct<X, Y, Z> {
         x: X,
         y: (X, Y),
-        #[nameables(skip)]
+        #[named_id(skip)]
         z: Z,
     }
 
-    #[derive(Debug, Clone, named_id::derive::Nameables)]
+    #[derive(Debug, Clone, named_id::RenameAll)]
     enum GenericEnum<X, Y> {
         X {
-            #[nameables(skip)]
+            #[named_id(skip)]
             m: Vec<X>,
             n: HashMap<X, Y>,
         },
@@ -221,23 +221,23 @@ fn test_generic_nameables() {
 
 #[test]
 fn test_deep_nesting() {
-    #[derive(Debug, Clone, named_id::derive::Nameables)]
+    #[derive(Debug, Clone, named_id::RenameAll)]
     enum A {
         Nums(Vec<Num>),
         Hex(Hex),
-        #[nameables(skip)]
+        #[named_id(skip)]
         Skip(Num),
     }
 
-    #[derive(Debug, Clone, named_id::derive::Nameables)]
+    #[derive(Debug, Clone, named_id::RenameAll)]
     struct B {
         a: A,
         #[allow(unused)]
-        #[nameables(skip)]
+        #[named_id(skip)]
         x: u32,
     }
 
-    #[derive(Debug, Clone, named_id::derive::Nameables)]
+    #[derive(Debug, Clone, named_id::RenameAll)]
     struct C {
         aa: Vec<A>,
         bb: Vec<B>,
@@ -323,13 +323,14 @@ C {
 }
 
 #[test]
-fn test_no_nameables() {
-    #[derive(Debug, Clone, named_id::derive::NoNameables)]
+fn test_no_named() {
+    #[derive(Debug, Clone, RenameNone)]
     enum A {
+        #[allow(unused)]
         Num(Num),
     }
 
-    #[derive(Debug, Clone, named_id::derive::Nameables)]
+    #[derive(Debug, Clone, RenameAll)]
     struct C {
         a: A,
         x: Num,

@@ -7,7 +7,7 @@ use syn::{Attribute, Data, DeriveInput, Fields, Index, parse_macro_input};
 /// Check if a field or variant has the `#[nameables(skip)]` attribute
 fn has_skip_attr(attrs: &[Attribute]) -> bool {
     attrs.iter().any(|attr| {
-        if attr.path().is_ident("nameables") {
+        if attr.path().is_ident("named_id") {
             // Parse the tokens inside the parentheses as a path
             if let Ok(path) = attr.parse_args::<syn::Path>() {
                 return path.is_ident("skip");
@@ -102,8 +102,8 @@ fn collect_generic_params_in_type(
     found
 }
 
-#[proc_macro_derive(Nameables, attributes(nameables))]
-pub fn derive_nameables(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(RenameAll, attributes(named_id))]
+pub fn derive_rename_all(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
     let generics = &input.generics;
@@ -113,7 +113,7 @@ pub fn derive_nameables(input: TokenStream) -> TokenStream {
             match &data_struct.fields {
                 Fields::Named(fields) => {
                     // For named fields, collect all field.nameables() and chain them
-                    // Skip fields with #[nameables(skip)]
+                    // Skip fields with #[named_id(skip)]
                     let field_calls: Vec<_> = fields
                         .named
                         .iter()
@@ -189,7 +189,7 @@ pub fn derive_nameables(input: TokenStream) -> TokenStream {
                 .iter()
                 .map(|variant| {
                     let variant_name = &variant.ident;
-                    // If the variant itself has #[nameables(skip)], skip all its fields
+                    // If the variant itself has #[named_id(skip)], skip all its fields
                     let variant_skip = has_skip_attr(&variant.attrs);
 
                     match &variant.fields {
@@ -419,8 +419,8 @@ pub fn derive_nameables(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-#[proc_macro_derive(NoNameables)]
-pub fn derive_no_nameables(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(RenameNone)]
+pub fn derive_no_named(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
     let generics = &input.generics;
