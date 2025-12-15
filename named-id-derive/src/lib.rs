@@ -418,3 +418,32 @@ pub fn derive_nameables(input: TokenStream) -> TokenStream {
 
     TokenStream::from(expanded)
 }
+
+#[proc_macro_derive(NoNameables)]
+pub fn derive_no_nameables(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let name = &input.ident;
+    let generics = &input.generics;
+
+    // Add Debug bound to all type parameters (required by Nameables trait)
+    let mut generics_with_bounds = generics.clone();
+    for param in &mut generics_with_bounds.params {
+        if let syn::GenericParam::Type(type_param) = param {
+            // Always add Debug bound (required by Nameables trait)
+            type_param.bounds.push(syn::parse_quote!(::std::fmt::Debug));
+        }
+    }
+
+    // Split generics for impl and where clause
+    let (impl_generics, ty_generics, where_clause) = generics_with_bounds.split_for_impl();
+
+    let expanded = quote! {
+        impl #impl_generics named_id::Nameables for #name #ty_generics #where_clause {
+            fn nameables(&self) -> ::std::vec::Vec<named_id::AnyNameable> {
+                ::std::vec::Vec::new()
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}

@@ -326,19 +326,35 @@ C {
 fn test_no_nameables() {
     #[derive(Debug, Clone, named_id::derive::NoNameables)]
     enum A {
-        Nums(Vec<Num>),
-        Hex(Hex),
-        Skip(Num),
+        Num(Num),
     }
-
-    #[derive(Debug, Clone)]
-    struct B(u32);
 
     #[derive(Debug, Clone, named_id::derive::Nameables)]
     struct C {
         a: A,
-        #[allow(unused)]
-        #[nameables(skip)]
-        x: u32,
+        x: Num,
     }
+
+    let num = Num(11).with_name("foo");
+
+    let val = C {
+        a: A::Num(Num(22).with_name("bar")),
+        x: num,
+    }
+    .renamed();
+    assert_eq!(format!("{val:?}"), "C { a: Num(Num(22)), x: ⟪ID|foo⟫ }");
+    assert_eq!(
+        format!("{val:#?}"),
+        "
+C {
+    a: Num(
+        Num(
+            22,
+        ),
+    ),
+    x: ⟪ID|foo⟫,
+}
+    "
+        .trim()
+    );
 }
