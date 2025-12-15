@@ -38,7 +38,7 @@ impl std::fmt::Debug for AnyNameable {
     }
 }
 
-pub trait Nameables: Sized + Debug {
+pub trait Rename: Sized + Debug {
     fn nameables(&self) -> Vec<AnyNameable>;
 
     fn renamed(self) -> Renamed<Self> {

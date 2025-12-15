@@ -5,7 +5,7 @@ use super::*;
 #[macro_export]
 macro_rules! empty_nameables {
     ($ty:ty) => {
-        impl Nameables for $ty {
+        impl Rename for $ty {
             fn nameables(&self) -> Vec<AnyNameable> {
                 vec![]
             }
@@ -31,52 +31,52 @@ empty_nameables!(bool);
 empty_nameables!(char);
 empty_nameables!(&'static str);
 
-impl<T> Nameables for PhantomData<T> {
+impl<T> Rename for PhantomData<T> {
     fn nameables(&self) -> Vec<AnyNameable> {
         vec![]
     }
 }
 
-impl<T> Nameables for Option<T>
+impl<T> Rename for Option<T>
 where
-    T: Nameables,
+    T: Rename,
 {
     fn nameables(&self) -> Vec<AnyNameable> {
         self.iter().flat_map(|t| t.nameables()).collect()
     }
 }
 
-impl<T> Nameables for Vec<T>
+impl<T> Rename for Vec<T>
 where
-    T: Nameables,
+    T: Rename,
 {
     fn nameables(&self) -> Vec<AnyNameable> {
         self.iter().flat_map(|t| t.nameables()).collect()
     }
 }
 
-impl<T> Nameables for std::collections::HashSet<T>
+impl<T> Rename for std::collections::HashSet<T>
 where
-    T: Nameables,
+    T: Rename,
 {
     fn nameables(&self) -> Vec<AnyNameable> {
         self.iter().flat_map(|t| t.nameables()).collect()
     }
 }
 
-impl<T> Nameables for std::collections::BTreeSet<T>
+impl<T> Rename for std::collections::BTreeSet<T>
 where
-    T: Nameables,
+    T: Rename,
 {
     fn nameables(&self) -> Vec<AnyNameable> {
         self.iter().flat_map(|t| t.nameables()).collect()
     }
 }
 
-impl<K, V> Nameables for std::collections::HashMap<K, V>
+impl<K, V> Rename for std::collections::HashMap<K, V>
 where
-    K: Nameables,
-    V: Nameables,
+    K: Rename,
+    V: Rename,
 {
     fn nameables(&self) -> Vec<AnyNameable> {
         self.iter()
@@ -85,10 +85,10 @@ where
     }
 }
 
-impl<K, V> Nameables for std::collections::BTreeMap<K, V>
+impl<K, V> Rename for std::collections::BTreeMap<K, V>
 where
-    K: Nameables,
-    V: Nameables,
+    K: Rename,
+    V: Rename,
 {
     fn nameables(&self) -> Vec<AnyNameable> {
         self.iter()
@@ -97,10 +97,10 @@ where
     }
 }
 
-impl<A, B> Nameables for (A, B)
+impl<A, B> Rename for (A, B)
 where
-    A: Nameables,
-    B: Nameables,
+    A: Rename,
+    B: Rename,
 {
     fn nameables(&self) -> Vec<AnyNameable> {
         self.0
@@ -111,11 +111,11 @@ where
     }
 }
 
-impl<A, B, C> Nameables for (A, B, C)
+impl<A, B, C> Rename for (A, B, C)
 where
-    A: Nameables,
-    B: Nameables,
-    C: Nameables,
+    A: Rename,
+    B: Rename,
+    C: Rename,
 {
     fn nameables(&self) -> Vec<AnyNameable> {
         self.0
@@ -127,12 +127,12 @@ where
     }
 }
 
-impl<A, B, C, D> Nameables for (A, B, C, D)
+impl<A, B, C, D> Rename for (A, B, C, D)
 where
-    A: Nameables,
-    B: Nameables,
-    C: Nameables,
-    D: Nameables,
+    A: Rename,
+    B: Rename,
+    C: Rename,
+    D: Rename,
 {
     fn nameables(&self) -> Vec<AnyNameable> {
         self.0
@@ -145,13 +145,13 @@ where
     }
 }
 
-impl<A, B, C, D, E> Nameables for (A, B, C, D, E)
+impl<A, B, C, D, E> Rename for (A, B, C, D, E)
 where
-    A: Nameables,
-    B: Nameables,
-    C: Nameables,
-    D: Nameables,
-    E: Nameables,
+    A: Rename,
+    B: Rename,
+    C: Rename,
+    D: Rename,
+    E: Rename,
 {
     fn nameables(&self) -> Vec<AnyNameable> {
         self.0
@@ -165,14 +165,14 @@ where
     }
 }
 
-impl<A, B, C, D, E, F> Nameables for (A, B, C, D, E, F)
+impl<A, B, C, D, E, F> Rename for (A, B, C, D, E, F)
 where
-    A: Nameables,
-    B: Nameables,
-    C: Nameables,
-    D: Nameables,
-    E: Nameables,
-    F: Nameables,
+    A: Rename,
+    B: Rename,
+    C: Rename,
+    D: Rename,
+    E: Rename,
+    F: Rename,
 {
     fn nameables(&self) -> Vec<AnyNameable> {
         self.0
@@ -187,15 +187,15 @@ where
     }
 }
 
-impl<A, B, C, D, E, F, G> Nameables for (A, B, C, D, E, F, G)
+impl<A, B, C, D, E, F, G> Rename for (A, B, C, D, E, F, G)
 where
-    A: Nameables,
-    B: Nameables,
-    C: Nameables,
-    D: Nameables,
-    E: Nameables,
-    F: Nameables,
-    G: Nameables,
+    A: Rename,
+    B: Rename,
+    C: Rename,
+    D: Rename,
+    E: Rename,
+    F: Rename,
+    G: Rename,
 {
     fn nameables(&self) -> Vec<AnyNameable> {
         self.0
@@ -211,16 +211,16 @@ where
     }
 }
 
-impl<A, B, C, D, E, F, G, H> Nameables for (A, B, C, D, E, F, G, H)
+impl<A, B, C, D, E, F, G, H> Rename for (A, B, C, D, E, F, G, H)
 where
-    A: Nameables,
-    B: Nameables,
-    C: Nameables,
-    D: Nameables,
-    E: Nameables,
-    F: Nameables,
-    G: Nameables,
-    H: Nameables,
+    A: Rename,
+    B: Rename,
+    C: Rename,
+    D: Rename,
+    E: Rename,
+    F: Rename,
+    G: Rename,
+    H: Rename,
 {
     fn nameables(&self) -> Vec<AnyNameable> {
         self.0

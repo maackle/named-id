@@ -306,7 +306,7 @@ pub fn derive_rename_all(input: TokenStream) -> TokenStream {
             }
         }
         Data::Union(_) => {
-            return syn::Error::new_spanned(name, "Nameables cannot be derived for unions")
+            return syn::Error::new_spanned(name, "Rename cannot be derived for unions")
                 .to_compile_error()
                 .into();
         }
@@ -388,19 +388,17 @@ pub fn derive_rename_all(input: TokenStream) -> TokenStream {
     }
 
     // Add bounds to type parameters:
-    // - Nameables bound only to type parameters used in non-skipped fields
-    // - Debug bound to all type parameters (required by Nameables trait)
+    // - Rename bound only to type parameters used in non-skipped fields
+    // - Debug bound to all type parameters (required by Rename trait)
     let mut generics_with_bounds = generics.clone();
     for param in &mut generics_with_bounds.params {
         if let syn::GenericParam::Type(type_param) = param {
-            // Always add Debug bound (required by Nameables trait)
+            // Always add Debug bound (required by Rename trait)
             type_param.bounds.push(syn::parse_quote!(::std::fmt::Debug));
 
-            // Add Nameables bound only if used in non-skipped fields
+            // Add Rename bound only if used in non-skipped fields
             if used_generic_params.contains(&type_param.ident) {
-                type_param
-                    .bounds
-                    .push(syn::parse_quote!(named_id::Nameables));
+                type_param.bounds.push(syn::parse_quote!(named_id::Rename));
             }
         }
     }
@@ -409,7 +407,7 @@ pub fn derive_rename_all(input: TokenStream) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = generics_with_bounds.split_for_impl();
 
     let expanded = quote! {
-        impl #impl_generics named_id::Nameables for #name #ty_generics #where_clause {
+        impl #impl_generics named_id::Rename for #name #ty_generics #where_clause {
             fn nameables(&self) -> ::std::vec::Vec<named_id::AnyNameable> {
                 #impl_block
             }
@@ -425,11 +423,11 @@ pub fn derive_no_named(input: TokenStream) -> TokenStream {
     let name = &input.ident;
     let generics = &input.generics;
 
-    // Add Debug bound to all type parameters (required by Nameables trait)
+    // Add Debug bound to all type parameters (required by Rename trait)
     let mut generics_with_bounds = generics.clone();
     for param in &mut generics_with_bounds.params {
         if let syn::GenericParam::Type(type_param) = param {
-            // Always add Debug bound (required by Nameables trait)
+            // Always add Debug bound (required by Rename trait)
             type_param.bounds.push(syn::parse_quote!(::std::fmt::Debug));
         }
     }
@@ -438,7 +436,7 @@ pub fn derive_no_named(input: TokenStream) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = generics_with_bounds.split_for_impl();
 
     let expanded = quote! {
-        impl #impl_generics named_id::Nameables for #name #ty_generics #where_clause {
+        impl #impl_generics named_id::Rename for #name #ty_generics #where_clause {
             fn nameables(&self) -> ::std::vec::Vec<named_id::AnyNameable> {
                 ::std::vec::Vec::new()
             }

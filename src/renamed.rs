@@ -7,16 +7,16 @@ pub struct Renamed<T>(T);
 
 impl<T> From<T> for Renamed<T>
 where
-    T: Nameables,
+    T: Rename,
 {
     fn from(value: T) -> Self {
         Renamed(value)
     }
 }
 
-impl<T> Nameables for Renamed<T>
+impl<T> Rename for Renamed<T>
 where
-    T: Nameables,
+    T: Rename,
 {
     fn nameables(&self) -> Vec<AnyNameable> {
         self.0.nameables()
@@ -25,7 +25,7 @@ where
 
 impl<T> std::ops::Deref for Renamed<T>
 where
-    T: Nameables,
+    T: Rename,
 {
     type Target = T;
     fn deref(&self) -> &Self::Target {
@@ -35,7 +35,7 @@ where
 
 impl<T> std::fmt::Display for Renamed<T>
 where
-    T: Nameables,
+    T: Rename,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
@@ -44,7 +44,7 @@ where
 
 impl<T> std::fmt::Debug for Renamed<T>
 where
-    T: Nameables,
+    T: Rename,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(

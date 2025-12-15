@@ -101,7 +101,7 @@ impl Shortener {
     }
 }
 
-impl<T> Nameables for T
+impl<T> Rename for T
 where
     T: Nameable + Clone + 'static,
 {
