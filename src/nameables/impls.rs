@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use super::*;
 
 #[macro_export]
@@ -28,6 +30,12 @@ empty_nameables!(f64);
 empty_nameables!(bool);
 empty_nameables!(char);
 empty_nameables!(&'static str);
+
+impl<T> Nameables for PhantomData<T> {
+    fn nameables(&self) -> Vec<AnyNameable> {
+        vec![]
+    }
+}
 
 impl<T> Nameables for Option<T>
 where

@@ -22,6 +22,19 @@ pub trait Nameable: Debug + Display {
         Self: Sized,
     {
         let name = if let Some(shortener) = self.shortener() {
+            bracketed(&format!("{}|{}", shortener.prefix, name), self.brackets())
+        } else {
+            bracketed(name, self.brackets())
+        };
+        set_name_string(&self, &name);
+        self
+    }
+
+    fn with_name_and_short(self, name: &str) -> Self
+    where
+        Self: Sized,
+    {
+        let name = if let Some(shortener) = self.shortener() {
             let short = shortener.shorten(self.to_string());
             bracketed(&format!("{}|{}", short, name), self.brackets())
         } else {
@@ -107,13 +120,13 @@ pub(crate) fn get_name_string(id: &AnyNameable) -> String {
 }
 
 pub(crate) fn set_name_string(id: &dyn Debug, name: &str) {
-    let existing = NAMES
-        .lock()
-        .unwrap()
-        .insert(format!("{id:?}"), name.to_string());
+    let repr = format!("{id:?}");
+    let existing = NAMES.lock().unwrap().insert(repr.clone(), name.to_string());
     if let Some(old) = existing {
         if old != name {
             tracing::warn!(?old, new = ?name, "name already exists, replacing");
         }
+    } else {
+        tracing::debug!(?repr, ?name, "setting name string");
     }
 }

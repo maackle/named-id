@@ -321,3 +321,24 @@ C {
         .trim()
     );
 }
+
+#[test]
+fn test_no_nameables() {
+    #[derive(Debug, Clone, named_id::derive::NoNameables)]
+    enum A {
+        Nums(Vec<Num>),
+        Hex(Hex),
+        Skip(Num),
+    }
+
+    #[derive(Debug, Clone)]
+    struct B(u32);
+
+    #[derive(Debug, Clone, named_id::derive::Nameables)]
+    struct C {
+        a: A,
+        #[allow(unused)]
+        #[nameables(skip)]
+        x: u32,
+    }
+}
