@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     fmt::{Debug, Display},
-    sync::{LazyLock, Mutex},
+    sync::{LazyLock, Mutex, atomic::AtomicUsize},
 };
 
 use crate::*;
@@ -15,6 +15,8 @@ static SHORT_ID_CACHE: LazyLock<Mutex<HashMap<String, String>>> =
 
 static NAMES: LazyLock<Mutex<HashMap<String, String>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
+
+static SERIAL: AtomicUsize = AtomicUsize::new(0);
 
 pub trait Nameable: Debug + Display {
     fn with_name(self, name: &str) -> Self
@@ -50,6 +52,18 @@ pub trait Nameable: Debug + Display {
     {
         let short = bracketed(&self.short(), self.brackets());
         set_name_string(&self, &short);
+        self
+    }
+
+    fn with_serial(self) -> Self
+    where
+        Self: Sized,
+    {
+        let name = format!(
+            "#{:03}",
+            SERIAL.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+        );
+        set_name_string(&self, &name);
         self
     }
 
