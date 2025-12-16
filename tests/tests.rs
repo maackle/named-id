@@ -53,11 +53,11 @@ fn test_short_id() {
     let id2 = Num(2345678901);
     let id3 = Num(3456789012);
     let idx = Num(12349876);
-    assert_eq!(id1.short(), "ID|1234");
-    assert_eq!(id2.short(), "ID|2345");
-    assert_eq!(id3.short(), "ID|3456");
+    assert_eq!(id1.short(), "1234");
+    assert_eq!(id2.short(), "2345");
+    assert_eq!(id3.short(), "3456");
 
-    assert_eq!(idx.short(), "ID|1234");
+    assert_eq!(idx.short(), "1234");
 }
 
 #[test]

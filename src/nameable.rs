@@ -13,22 +13,52 @@ use crate::*;
 static SHORT_ID_CACHE: LazyLock<Mutex<HashMap<String, String>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-static NAMES: LazyLock<Mutex<HashMap<String, String>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
+static NAMES: LazyLock<Mutex<HashMap<String, Name>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
 static SERIAL: AtomicUsize = AtomicUsize::new(0);
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Name {
+    prefix: Option<&'static str>,
+    kind: NameKind,
+    brackets: (&'static str, &'static str),
+}
+
+impl std::fmt::Display for Name {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut inner = match &self.kind {
+            NameKind::Serial(serial) => format!("#{:03}", serial),
+            NameKind::Short(short) => format!("{}", short),
+            NameKind::Name(name) => format!("{}", name),
+            NameKind::NameShort { name, short } => format!("{}|{}", name, short),
+        };
+
+        if let Some(prefix) = self.prefix {
+            inner = format!("{}|{}", prefix, inner);
+        }
+        write!(f, "{}", bracketed(&inner, self.brackets))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum NameKind {
+    Serial(usize),
+    Short(String),
+    Name(String),
+    NameShort { name: String, short: String },
+}
 
 pub trait Nameable: Debug + Display {
     fn with_name(self, name: &str) -> Self
     where
         Self: Sized,
     {
-        let name = if let Some(shortener) = self.shortener() {
-            bracketed(&format!("{}|{}", shortener.prefix, name), self.brackets())
-        } else {
-            bracketed(name, self.brackets())
+        let name = Name {
+            prefix: self.shortener().map(|s| s.prefix),
+            kind: NameKind::Name(name.to_string()),
+            brackets: self.brackets(),
         };
-        set_name_string(&self, &name);
+        set_name(&self, name);
         self
     }
 
@@ -38,11 +68,22 @@ pub trait Nameable: Debug + Display {
     {
         let name = if let Some(shortener) = self.shortener() {
             let short = shortener.shorten(self.to_string());
-            bracketed(&format!("{}|{}", short, name), self.brackets())
+            Name {
+                prefix: Some(shortener.prefix),
+                kind: NameKind::NameShort {
+                    name: name.to_string(),
+                    short,
+                },
+                brackets: self.brackets(),
+            }
         } else {
-            bracketed(name, self.brackets())
+            Name {
+                prefix: None,
+                kind: NameKind::Name(name.to_string()),
+                brackets: self.brackets(),
+            }
         };
-        set_name_string(&self, &name);
+        set_name(&self, name);
         self
     }
 
@@ -50,8 +91,14 @@ pub trait Nameable: Debug + Display {
     where
         Self: Sized,
     {
-        let short = bracketed(&self.short(), self.brackets());
-        set_name_string(&self, &short);
+        set_name(
+            &self,
+            Name {
+                prefix: self.shortener().map(|s| s.prefix),
+                kind: NameKind::Short(self.short()),
+                brackets: self.brackets(),
+            },
+        );
         self
     }
 
@@ -59,11 +106,15 @@ pub trait Nameable: Debug + Display {
     where
         Self: Sized,
     {
-        let name = format!(
-            "#{:03}",
-            SERIAL.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+        let serial = SERIAL.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        set_name(
+            &self,
+            Name {
+                prefix: self.shortener().map(|s| s.prefix),
+                kind: NameKind::Serial(serial),
+                brackets: self.brackets(),
+            },
         );
-        set_name_string(&self, &name);
         self
     }
 
@@ -88,15 +139,9 @@ pub struct Shortener {
 impl Shortener {
     fn shorten(&self, original: String) -> String {
         // assert_prefix_unique(self);
-        let mut s = original.clone();
+        let mut short_id = original.clone();
 
-        s.truncate(self.length);
-
-        let short_id = if s.is_empty() {
-            format!("{}‖", self.prefix)
-        } else {
-            format!("{}|{s}", self.prefix)
-        };
+        short_id.truncate(self.length);
 
         if let Some(existing) = SHORT_ID_CACHE
             .lock()
@@ -130,17 +175,38 @@ pub(crate) fn get_name_string(id: &AnyNameable) -> String {
         .unwrap()
         .get(&format!("{id:?}"))
         .cloned()
+        .map(|name| name.to_string())
         .unwrap_or_else(|| id.to_string())
 }
 
-pub(crate) fn set_name_string(id: &dyn Debug, name: &str) {
+pub(crate) fn set_name(id: &dyn Debug, name: Name) {
+    use NameKind::*;
     let repr = format!("{id:?}");
-    let existing = NAMES.lock().unwrap().insert(repr.clone(), name.to_string());
-    if let Some(old) = existing {
+    let mut lock = NAMES.lock().unwrap();
+
+    // Only replace "upward" in specificity
+    let existing = lock.get(&format!("{id:?}"));
+    let replace = existing
+        .map(|existing| match (&existing.kind, &name.kind) {
+            (Serial(_), Serial(_)) => false,
+            (Short(_), Serial(_) | Short(_)) => false,
+            (Name(_), Serial(_) | Short(_) | Name(_)) => false,
+            (NameShort { .. }, _) => false,
+            _ => true,
+        })
+        .unwrap_or(true);
+
+    if let Some(old) = existing.cloned() {
         if old != name {
-            tracing::warn!(?old, new = ?name, "name already exists, replacing");
+            if replace {
+                lock.insert(repr.clone(), name.clone());
+                tracing::warn!(%old, new = %name, "replacing existing name");
+            } else {
+                tracing::debug!(%old, new = %name, "name already exists, skipping");
+            }
         }
     } else {
-        tracing::debug!(?repr, ?name, "setting name string");
+        lock.insert(repr.clone(), name.clone());
+        tracing::debug!(%repr, %name, "set new name");
     }
 }
