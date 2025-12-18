@@ -200,10 +200,14 @@ pub fn derive_rename_all(input: TokenStream) -> TokenStream {
                                 }
                             } else {
                                 // Filter out fields with #[nameables(skip)]
-                                let field_calls: Vec<_> = fields
+                                let noskip: Vec<_> = fields
                                     .named
                                     .iter()
                                     .filter(|f| !has_skip_attr(&f.attrs))
+                                    .collect();
+
+                                let field_calls: Vec<_> = noskip
+                                    .iter()
                                     .map(|f| {
                                         let field_name = &f.ident;
                                         quote! { #field_name.nameables() }
@@ -212,15 +216,20 @@ pub fn derive_rename_all(input: TokenStream) -> TokenStream {
 
                                 // We still need to bind all fields in the pattern, even skipped ones
                                 let all_field_names: Vec<_> =
-                                    fields.named.iter().map(|f| &f.ident).collect();
+                                    noskip.iter().map(|f| &f.ident).collect();
 
-                                if field_calls.is_empty() {
+                                if noskip.is_empty() {
                                     quote! {
                                         #name::#variant_name { .. } => Vec::new(),
                                     }
                                 } else {
+                                    let variants = if noskip.len() == fields.named.len() {
+                                        quote! { #(#all_field_names,)* }
+                                    } else {
+                                        quote! { #(#all_field_names,)* .. }
+                                    };
                                     quote! {
-                                        #name::#variant_name { #(#all_field_names,)* } => {
+                                        #name::#variant_name { #variants } => {
                                             let mut result = Vec::new();
                                             #(
                                                 result.extend(#field_calls);
