@@ -160,11 +160,20 @@ impl Shortener {
     }
 }
 
+impl<T> Nameable for &T
+where
+    T: Nameable,
+{
+    fn shortener(&self) -> Option<Shortener> {
+        (*self).shortener()
+    }
+}
+
 impl<T> Rename for T
 where
-    T: Nameable + Clone + 'static,
+    T: Nameable + Clone,
 {
-    fn nameables(&self) -> Vec<AnyNameable> {
+    fn nameables(&self) -> Vec<AnyNameable<'_>> {
         vec![AnyNameable(Box::new(self.clone()))]
     }
 }

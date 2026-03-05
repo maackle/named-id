@@ -4,31 +4,31 @@ use std::fmt::Debug;
 
 mod impls;
 
-pub trait AnyNameableBounds: Debug + 'static {}
-impl<T: Debug + 'static> AnyNameableBounds for T {}
+pub trait AnyNameableBounds<'a>: Debug + 'a {}
+impl<'a, T: Debug + 'a> AnyNameableBounds<'a> for T {}
 
-pub struct AnyNameable(pub(crate) Box<dyn AnyNameableBounds>);
+pub struct AnyNameable<'a>(pub(crate) Box<dyn AnyNameableBounds<'a>>);
 
-impl AnyNameable {
-    pub fn new<T: AnyNameableBounds>(t: T) -> Self {
+impl<'a> AnyNameable<'a> {
+    pub fn new<T: AnyNameableBounds<'a>>(t: T) -> Self {
         AnyNameable(Box::new(t))
     }
 }
 
-impl std::ops::Deref for AnyNameable {
-    type Target = dyn Debug;
+impl<'a> std::ops::Deref for AnyNameable<'a> {
+    type Target = dyn Debug + 'a;
     fn deref(&self) -> &Self::Target {
         &*self.0
     }
 }
 
-impl std::fmt::Display for AnyNameable {
+impl<'a> std::fmt::Display for AnyNameable<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
-impl std::fmt::Debug for AnyNameable {
+impl<'a> std::fmt::Debug for AnyNameable<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if f.alternate() {
             write!(f, "{:#?}", self.0)
@@ -39,7 +39,7 @@ impl std::fmt::Debug for AnyNameable {
 }
 
 pub trait Rename: Sized + Debug {
-    fn nameables(&self) -> Vec<AnyNameable>;
+    fn nameables(&self) -> Vec<AnyNameable<'_>>;
 
     fn renamed(self) -> Renamed<Self> {
         self.into()

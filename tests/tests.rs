@@ -190,9 +190,11 @@ fn test_generic_nameables() {
         z: 1234567890,
     };
 
-    // Verify that nameables() correctly skips the z field
-    let nameables = gs.nameables();
-    assert_eq!(nameables.len(), 3); // Only x and y, not z
+    {
+        // Verify that nameables() correctly skips the z field
+        let nameables = gs.nameables();
+        assert_eq!(nameables.len(), 3); // Only x and y, not z
+    }
 
     let gs = gs.renamed();
     assert_eq!(
