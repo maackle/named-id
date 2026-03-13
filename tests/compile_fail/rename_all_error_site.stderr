@@ -1,0 +1,24 @@
+error[E0599]: the method `nameables` exists for struct `NotRenameable`, but its trait bounds were not satisfied
+ --> tests/compile_fail/rename_all_error_site.rs:9:10
+  |
+4 | struct NotRenameable;
+  | -------------------- method `nameables` not found for this struct because it doesn't satisfy `NotRenameable: Clone`, `NotRenameable: Nameable` or `NotRenameable: Rename`
+...
+9 |     bad: NotRenameable,
+  |          ^^^^^^^^^^^^^ method cannot be called on `NotRenameable` due to unsatisfied trait bounds
+  |
+  = note: the following trait bounds were not satisfied:
+          `NotRenameable: Nameable`
+          which is required by `NotRenameable: Rename`
+          `NotRenameable: Clone`
+          which is required by `NotRenameable: Rename`
+note: the trait `Nameable` must be implemented
+ --> src/nameable.rs
+  |
+  | pub trait Nameable: Debug + Display {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider annotating `NotRenameable` with `#[derive(Clone)]`
+  |
+4 + #[derive(Clone)]
+5 | struct NotRenameable;
+  |
