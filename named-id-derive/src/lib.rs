@@ -1,8 +1,8 @@
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use quote::quote;
+use quote::{quote, quote_spanned};
 use std::collections::HashSet;
-use syn::{Attribute, Data, DeriveInput, Fields, Index, parse_macro_input};
+use syn::{Attribute, Data, DeriveInput, Fields, Index, parse_macro_input, spanned::Spanned};
 
 /// Check if a field or variant has the `#[nameables(skip)]` attribute
 fn has_skip_attr(attrs: &[Attribute]) -> bool {
@@ -120,7 +120,8 @@ pub fn derive_rename_all(input: TokenStream) -> TokenStream {
                         .filter(|field| !has_skip_attr(&field.attrs))
                         .map(|field| {
                             let field_name = &field.ident;
-                            quote! {
+                            let span = field.ty.span();
+                            quote_spanned! { span =>
                                 self.#field_name.nameables()
                             }
                         })
@@ -150,9 +151,10 @@ pub fn derive_rename_all(input: TokenStream) -> TokenStream {
                         .iter()
                         .enumerate()
                         .filter(|(_, field)| !has_skip_attr(&field.attrs))
-                        .map(|(idx, _field)| {
+                        .map(|(idx, field)| {
                             let index = Index::from(idx);
-                            quote! {
+                            let span = field.ty.span();
+                            quote_spanned! { span =>
                                 self.#index.nameables()
                             }
                         })
@@ -210,7 +212,8 @@ pub fn derive_rename_all(input: TokenStream) -> TokenStream {
                                     .iter()
                                     .map(|f| {
                                         let field_name = &f.ident;
-                                        quote! { #field_name.nameables() }
+                                        let span = f.ty.span();
+                                        quote_spanned! { span => #field_name.nameables() }
                                     })
                                     .collect();
 
@@ -266,12 +269,13 @@ pub fn derive_rename_all(input: TokenStream) -> TokenStream {
                                     .iter()
                                     .enumerate()
                                     .filter(|(_, field)| !has_skip_attr(&field.attrs))
-                                    .map(|(i, _)| {
+                                    .map(|(i, field)| {
                                         let ident = syn::Ident::new(
                                             &format!("field_{}", i),
                                             Span::call_site(),
                                         );
-                                        quote! { #ident.nameables() }
+                                        let span = field.ty.span();
+                                        quote_spanned! { span => #ident.nameables() }
                                     })
                                     .collect();
 
