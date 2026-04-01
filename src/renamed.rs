@@ -18,7 +18,7 @@ impl<T> Rename for Renamed<T>
 where
     T: Rename,
 {
-    fn nameables(&self) -> Vec<AnyNameable> {
+    fn nameables(&self) -> Vec<AnyNameable<'_>> {
         self.0.nameables()
     }
 }

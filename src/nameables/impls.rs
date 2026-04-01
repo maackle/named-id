@@ -6,7 +6,7 @@ use super::*;
 macro_rules! empty_nameables {
     ($ty:ty) => {
         impl Rename for $ty {
-            fn nameables(&self) -> Vec<AnyNameable> {
+            fn nameables(&self) -> Vec<AnyNameable<'_>> {
                 vec![]
             }
         }
@@ -32,7 +32,7 @@ empty_nameables!(char);
 empty_nameables!(&'static str);
 
 impl<T> Rename for PhantomData<T> {
-    fn nameables(&self) -> Vec<AnyNameable> {
+    fn nameables(&self) -> Vec<AnyNameable<'_>> {
         vec![]
     }
 }
@@ -41,7 +41,7 @@ impl<T> Rename for Option<T>
 where
     T: Rename,
 {
-    fn nameables(&self) -> Vec<AnyNameable> {
+    fn nameables(&self) -> Vec<AnyNameable<'_>> {
         self.iter().flat_map(|t| t.nameables()).collect()
     }
 }
@@ -50,7 +50,7 @@ impl<T> Rename for Vec<T>
 where
     T: Rename,
 {
-    fn nameables(&self) -> Vec<AnyNameable> {
+    fn nameables(&self) -> Vec<AnyNameable<'_>> {
         self.iter().flat_map(|t| t.nameables()).collect()
     }
 }
@@ -59,7 +59,7 @@ impl<T> Rename for std::collections::HashSet<T>
 where
     T: Rename,
 {
-    fn nameables(&self) -> Vec<AnyNameable> {
+    fn nameables(&self) -> Vec<AnyNameable<'_>> {
         self.iter().flat_map(|t| t.nameables()).collect()
     }
 }
@@ -68,7 +68,7 @@ impl<T> Rename for std::collections::BTreeSet<T>
 where
     T: Rename,
 {
-    fn nameables(&self) -> Vec<AnyNameable> {
+    fn nameables(&self) -> Vec<AnyNameable<'_>> {
         self.iter().flat_map(|t| t.nameables()).collect()
     }
 }
@@ -78,7 +78,7 @@ where
     K: Rename,
     V: Rename,
 {
-    fn nameables(&self) -> Vec<AnyNameable> {
+    fn nameables(&self) -> Vec<AnyNameable<'_>> {
         self.iter()
             .flat_map(|(k, v)| k.nameables().into_iter().chain(v.nameables()))
             .collect()
@@ -90,7 +90,7 @@ where
     K: Rename,
     V: Rename,
 {
-    fn nameables(&self) -> Vec<AnyNameable> {
+    fn nameables(&self) -> Vec<AnyNameable<'_>> {
         self.iter()
             .flat_map(|(k, v)| k.nameables().into_iter().chain(v.nameables()))
             .collect()
@@ -102,7 +102,7 @@ where
     A: Rename,
     B: Rename,
 {
-    fn nameables(&self) -> Vec<AnyNameable> {
+    fn nameables(&self) -> Vec<AnyNameable<'_>> {
         self.0
             .nameables()
             .into_iter()
@@ -117,7 +117,7 @@ where
     B: Rename,
     C: Rename,
 {
-    fn nameables(&self) -> Vec<AnyNameable> {
+    fn nameables(&self) -> Vec<AnyNameable<'_>> {
         self.0
             .nameables()
             .into_iter()
@@ -134,7 +134,7 @@ where
     C: Rename,
     D: Rename,
 {
-    fn nameables(&self) -> Vec<AnyNameable> {
+    fn nameables(&self) -> Vec<AnyNameable<'_>> {
         self.0
             .nameables()
             .into_iter()
@@ -153,7 +153,7 @@ where
     D: Rename,
     E: Rename,
 {
-    fn nameables(&self) -> Vec<AnyNameable> {
+    fn nameables(&self) -> Vec<AnyNameable<'_>> {
         self.0
             .nameables()
             .into_iter()
@@ -174,7 +174,7 @@ where
     E: Rename,
     F: Rename,
 {
-    fn nameables(&self) -> Vec<AnyNameable> {
+    fn nameables(&self) -> Vec<AnyNameable<'_>> {
         self.0
             .nameables()
             .into_iter()
@@ -197,7 +197,7 @@ where
     F: Rename,
     G: Rename,
 {
-    fn nameables(&self) -> Vec<AnyNameable> {
+    fn nameables(&self) -> Vec<AnyNameable<'_>> {
         self.0
             .nameables()
             .into_iter()
@@ -222,7 +222,7 @@ where
     G: Rename,
     H: Rename,
 {
-    fn nameables(&self) -> Vec<AnyNameable> {
+    fn nameables(&self) -> Vec<AnyNameable<'_>> {
         self.0
             .nameables()
             .into_iter()
