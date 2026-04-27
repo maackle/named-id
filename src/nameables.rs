@@ -44,4 +44,11 @@ pub trait Rename: Sized + Debug {
     fn renamed(self) -> Renamed<Self> {
         self.into()
     }
+
+    fn renamed_ref(&self) -> Renamed<Self>
+    where
+        Self: Clone,
+    {
+        Renamed::from(self.clone())
+    }
 }
