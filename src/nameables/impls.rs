@@ -97,6 +97,15 @@ where
     }
 }
 
+impl<const N: usize, T> Rename for [T; N]
+where
+    T: Rename,
+{
+    fn nameables(&self) -> Vec<AnyNameable<'_>> {
+        self.iter().flat_map(|t| t.nameables()).collect()
+    }
+}
+
 impl<A, B> Rename for (A, B)
 where
     A: Rename,
